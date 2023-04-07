@@ -41,13 +41,25 @@ class KoozaImpl implements Kooza {
   @override
   Future<void> setBool(String key, bool? value, {Duration? ttl}) async {
     try {
-      var doc = KoozaValue.init(
+      if (!_subject.value.containsKey(key)) {
+        final result = _box.get(key);
+        if (result != null) {
+          var allData = Map<String, dynamic>.from(_subject.value);
+          allData[key] = result;
+          _subject.sink.add(allData);
+        }
+      }
+      var newValue = KoozaValue.init(
         value: value,
         ttl: ttl,
         timestamp: DateTime.now(),
-      ).toMap();
-      _subject.sink.add({key: doc});
-      await _box.put(key, doc);
+      );
+
+      var allData = Map<String, dynamic>.from(_subject.value);
+      allData[key] = newValue.toMap();
+
+      _subject.sink.add(allData);
+      await _box.put(key, newValue.toMap());
     } catch (e) {
       throw KoozaError(
         code: 'KOOZA_SET_BOOL',
@@ -57,32 +69,32 @@ class KoozaImpl implements Kooza {
   }
 
   @override
-  Stream<bool?> streamBool(String key) {
+  Stream<bool?> streamBool(String key) async* {
     if (!_subject.value.containsKey(key)) {
       final result = _box.get(key);
       if (result != null) {
-        var subjectData = Map<String, dynamic>.from(_subject.value);
-        subjectData[key] = result;
-        _subject.sink.add(subjectData);
+        var allData = Map<String, dynamic>.from(_subject.value);
+        allData[key] = result;
+        _subject.sink.add(allData);
       }
     }
-    return _subject.stream.asyncMap((event) async {
+
+    var val = KoozaValue.fromMap(Map<String, dynamic>.from(_subject.value[key] ?? {}));
+    if (val.ttl != null) {
+      final storedDuration = DateTime.now().difference(val.timestamp);
+      if (storedDuration.inMilliseconds >= val.ttl!.inMilliseconds) {
+        var allData = Map<String, dynamic>.from(_subject.value);
+        allData.remove(key);
+        _subject.sink.add(allData);
+        await _box.delete(key);
+      }
+    }
+    yield* _subject.stream.map((event) {
       final data = event[key];
       if (data == null) return data;
-
-      final doc = KoozaValue.fromMap(Map<String, dynamic>.from(data));
-      if (doc.ttl == null) return doc.value;
-
-      final storedDuration = DateTime.now().difference(doc.timestamp);
-      if (storedDuration.inMilliseconds >= doc.ttl!.inMilliseconds) {
-        var subjectData = Map<String, dynamic>.from(_subject.value);
-        subjectData.remove(key);
-        _subject.sink.add(subjectData);
-        await _box.delete(key);
-        return null;
-      }
-
-      return doc.value;
+      final val = KoozaValue.fromMap(Map<String, dynamic>.from(data));
+      if (val.ttl == null) return val.value;
+      return val.value;
     });
   }
 
@@ -92,9 +104,9 @@ class KoozaImpl implements Kooza {
       if (_subject.value[key] == null) {
         final result = _box.get(key);
         if (result == null) return null;
-        var subjectData = Map<String, dynamic>.from(_subject.value);
-        subjectData[key] = result;
-        _subject.sink.add(subjectData);
+        var allData = Map<String, dynamic>.from(_subject.value);
+        allData[key] = result;
+        _subject.sink.add(allData);
       }
 
       final data = _subject.value[key];
@@ -104,9 +116,9 @@ class KoozaImpl implements Kooza {
 
       final storedDuration = DateTime.now().difference(doc.timestamp);
       if (storedDuration.inMilliseconds >= doc.ttl!.inMilliseconds) {
-        var subjectData = Map<String, dynamic>.from(_subject.value);
-        subjectData.remove(key);
-        _subject.sink.add(subjectData);
+        var allData = Map<String, dynamic>.from(_subject.value);
+        allData.remove(key);
+        _subject.sink.add(allData);
         await _box.delete(key);
         return null;
       }
@@ -120,23 +132,243 @@ class KoozaImpl implements Kooza {
   }
 
   @override
-  Future<void> setInt(String key, int? value, {Duration? ttl}) {
-    throw UnimplementedError();
+  Future<void> setInt(String key, int? value, {Duration? ttl}) async {
+    try {
+      if (!_subject.value.containsKey(key)) {
+        final result = _box.get(key);
+        if (result != null) {
+          var allData = Map<String, dynamic>.from(_subject.value);
+          allData[key] = result;
+          _subject.sink.add(allData);
+        }
+      }
+      var newValue = KoozaValue.init(
+        value: value,
+        ttl: ttl,
+        timestamp: DateTime.now(),
+      );
+
+      var allData = Map<String, dynamic>.from(_subject.value);
+      allData[key] = newValue.toMap();
+
+      _subject.sink.add(allData);
+      await _box.put(key, newValue.toMap());
+    } catch (e) {
+      throw KoozaError(
+        code: 'KOOZA_SET_INT',
+        message: 'The integer value ($value) could not be saved in Kooza',
+      );
+    }
   }
 
   @override
-  Future<void> setDouble(String key, double? value, {Duration? ttl}) {
-    throw UnimplementedError();
+  Stream<int?> streamInt(String key) async* {
+    if (!_subject.value.containsKey(key)) {
+      final result = _box.get(key);
+      if (result != null) {
+        var allData = Map<String, dynamic>.from(_subject.value);
+        allData[key] = result;
+        _subject.sink.add(allData);
+      }
+    }
+
+    var val = KoozaValue.fromMap(Map<String, dynamic>.from(_subject.value[key] ?? {}));
+    if (val.ttl != null) {
+      final storedDuration = DateTime.now().difference(val.timestamp);
+      if (storedDuration.inMilliseconds >= val.ttl!.inMilliseconds) {
+        var allData = Map<String, dynamic>.from(_subject.value);
+        allData.remove(key);
+        _subject.sink.add(allData);
+        await _box.delete(key);
+      }
+    }
+    yield* _subject.stream.map((event) {
+      final data = event[key];
+      if (data == null) return data;
+      final val = KoozaValue.fromMap(Map<String, dynamic>.from(data));
+      if (val.ttl == null) return val.value;
+      return val.value;
+    });
   }
 
   @override
-  Future<void> setString(String key, String? value, {Duration? ttl}) {
-    throw UnimplementedError();
+  Future<void> setDouble(String key, double? value, {Duration? ttl}) async {
+    try {
+      if (!_subject.value.containsKey(key)) {
+        final result = _box.get(key);
+        if (result != null) {
+          var allData = Map<String, dynamic>.from(_subject.value);
+          allData[key] = result;
+          _subject.sink.add(allData);
+        }
+      }
+      var newValue = KoozaValue.init(
+        value: value,
+        ttl: ttl,
+        timestamp: DateTime.now(),
+      );
+
+      var allData = Map<String, dynamic>.from(_subject.value);
+      allData[key] = newValue.toMap();
+
+      _subject.sink.add(allData);
+      await _box.put(key, newValue.toMap());
+    } catch (e) {
+      throw KoozaError(
+        code: 'KOOZA_SET_DOUBLE',
+        message: 'The double value ($value) could not be saved in Kooza',
+      );
+    }
   }
 
   @override
-  Future<void> setMap(String key, Map? value, {Duration? ttl}) {
-    throw UnimplementedError();
+  Stream<double?> streamDouble(String key) async* {
+    if (!_subject.value.containsKey(key)) {
+      final result = _box.get(key);
+      if (result != null) {
+        var allData = Map<String, dynamic>.from(_subject.value);
+        allData[key] = result;
+        _subject.sink.add(allData);
+      }
+    }
+
+    var val = KoozaValue.fromMap(Map<String, dynamic>.from(_subject.value[key] ?? {}));
+    if (val.ttl != null) {
+      final storedDuration = DateTime.now().difference(val.timestamp);
+      if (storedDuration.inMilliseconds >= val.ttl!.inMilliseconds) {
+        var allData = Map<String, dynamic>.from(_subject.value);
+        allData.remove(key);
+        _subject.sink.add(allData);
+        await _box.delete(key);
+      }
+    }
+    yield* _subject.stream.map((event) {
+      final data = event[key];
+      if (data == null) return data;
+      final val = KoozaValue.fromMap(Map<String, dynamic>.from(data));
+      if (val.ttl == null) return val.value;
+      return val.value;
+    });
+  }
+
+  @override
+  Future<void> setString(String key, String? value, {Duration? ttl}) async {
+    try {
+      if (!_subject.value.containsKey(key)) {
+        final result = _box.get(key);
+        if (result != null) {
+          var allData = Map<String, dynamic>.from(_subject.value);
+          allData[key] = result;
+          _subject.sink.add(allData);
+        }
+      }
+      var newValue = KoozaValue.init(
+        value: value,
+        ttl: ttl,
+        timestamp: DateTime.now(),
+      );
+
+      var allData = Map<String, dynamic>.from(_subject.value);
+      allData[key] = newValue.toMap();
+
+      _subject.sink.add(allData);
+      await _box.put(key, newValue.toMap());
+    } catch (e) {
+      throw KoozaError(
+        code: 'KOOZA_SET_STRING',
+        message: 'The String value ($value) could not be saved in Kooza',
+      );
+    }
+  }
+
+  @override
+  Stream<String?> streamString(String key) async* {
+    if (!_subject.value.containsKey(key)) {
+      final result = _box.get(key);
+      if (result != null) {
+        var allData = Map<String, dynamic>.from(_subject.value);
+        allData[key] = result;
+        _subject.sink.add(allData);
+      }
+    }
+
+    var val = KoozaValue.fromMap(Map<String, dynamic>.from(_subject.value[key] ?? {}));
+    if (val.ttl != null) {
+      final storedDuration = DateTime.now().difference(val.timestamp);
+      if (storedDuration.inMilliseconds >= val.ttl!.inMilliseconds) {
+        var allData = Map<String, dynamic>.from(_subject.value);
+        allData.remove(key);
+        _subject.sink.add(allData);
+        await _box.delete(key);
+      }
+    }
+    yield* _subject.stream.map((event) {
+      final data = event[key];
+      if (data == null) return data;
+      final val = KoozaValue.fromMap(Map<String, dynamic>.from(data));
+      if (val.ttl == null) return val.value;
+      return val.value;
+    });
+  }
+
+  @override
+  Future<void> setMap(String key, Map? value, {Duration? ttl}) async {
+    try {
+      if (!_subject.value.containsKey(key)) {
+        final result = _box.get(key);
+        if (result != null) {
+          var allData = Map<String, dynamic>.from(_subject.value);
+          allData[key] = result;
+          _subject.sink.add(allData);
+        }
+      }
+      var newValue = KoozaValue.init(
+        value: value,
+        ttl: ttl,
+        timestamp: DateTime.now(),
+      );
+
+      var allData = Map<String, dynamic>.from(_subject.value);
+      allData[key] = newValue.toMap();
+
+      _subject.sink.add(allData);
+      await _box.put(key, newValue.toMap());
+    } catch (e) {
+      throw KoozaError(
+        code: 'KOOZA_SET_BOOL',
+        message: 'The boolean value ($value) could not be saved in Kooza',
+      );
+    }
+  }
+
+  @override
+  Stream<Map<String, dynamic>?> streamMap(String key) async* {
+    if (!_subject.value.containsKey(key)) {
+      final result = _box.get(key);
+      if (result != null) {
+        var allData = Map<String, dynamic>.from(_subject.value);
+        allData[key] = result;
+        _subject.sink.add(allData);
+      }
+    }
+
+    var val = KoozaValue.fromMap(Map<String, dynamic>.from(_subject.value[key] ?? {}));
+    if (val.ttl != null) {
+      final storedDuration = DateTime.now().difference(val.timestamp);
+      if (storedDuration.inMilliseconds >= val.ttl!.inMilliseconds) {
+        var allData = Map<String, dynamic>.from(_subject.value);
+        allData.remove(key);
+        _subject.sink.add(allData);
+        await _box.delete(key);
+      }
+    }
+    yield* _subject.stream.map((event) {
+      final data = event[key];
+      if (data == null) return data;
+      final val = KoozaValue.fromMap(Map<String, dynamic>.from(data));
+      if (val.ttl == null) return val.value;
+      return val.value;
+    });
   }
 
   @override
@@ -157,19 +389,24 @@ class KoozaImpl implements Kooza {
         }
       }
 
-      var collRef = KoozaCollection.fromMap(_subject.value[collection] ?? {});
+      var newCollection = KoozaCollection.fromMap(_subject.value[collection]);
+
       var newValue = Map<String, dynamic>.from(value);
       newValue['docId'] = newId;
 
-      final newDoc = KoozaDocument.fromMap(value).copyWith(
+      final newDoc = KoozaDocument.init(
         timestamp: DateTime.now(),
         data: newValue,
         ttl: ttl,
       );
-      collRef = collRef.setDoc(newId, newDoc);
 
-      _subject.sink.add({collection: collRef.toMap()});
-      await _box.put(collection, collRef.toMap());
+      newCollection = newCollection.setDoc(newId, newDoc);
+
+      var allData = Map<String, dynamic>.from(_subject.value);
+      allData[collection] = newCollection.toMap();
+
+      _subject.sink.add(allData);
+      await _box.put(collection, newCollection.toMap());
 
       return newId;
     } catch (e) {
@@ -185,14 +422,14 @@ class KoozaImpl implements Kooza {
     if (!_subject.value.containsKey(collection)) {
       final result = _box.get(collection);
       if (result != null) {
-        var subjectData = Map<String, dynamic>.from(_subject.value);
-        subjectData[collection] = result;
-        _subject.sink.add(subjectData);
+        var allData = Map<String, dynamic>.from(_subject.value);
+        allData[collection] = result;
+        _subject.sink.add(allData);
       }
     }
 
-    var collRef = KoozaCollection.fromMap(_subject.value[collection] ?? {});
-    var newDocs = Map<String, KoozaDocument>.from(collRef.docs);
+    var newCollection = KoozaCollection.fromMap(_subject.value[collection]);
+    var newDocs = Map<String, KoozaDocument>.from(newCollection.docs);
     newDocs.removeWhere((_, v) {
       if (v.ttl == null) return false;
       final storedDuration = DateTime.now().difference(v.timestamp);
@@ -200,9 +437,12 @@ class KoozaImpl implements Kooza {
       return false;
     });
 
-    collRef = collRef.copyWith(docs: newDocs);
-    _subject.sink.add({collection: collRef.toMap()});
-    await _box.put(collection, collRef.toMap());
+    newCollection = newCollection.copyWith(docs: newDocs);
+    var allData = Map<String, dynamic>.from(_subject.value);
+    allData[collection] = newCollection.toMap();
+
+    _subject.sink.add(allData);
+    await _box.put(collection, newCollection.toMap());
 
     yield* _subject.stream.map((event) {
       if (event[collection] == null) return [];

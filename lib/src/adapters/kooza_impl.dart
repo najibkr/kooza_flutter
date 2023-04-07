@@ -424,7 +424,7 @@ class KoozaImpl implements Kooza {
   }
 
   @override
-  Future<bool> docExists(String collection, String docId) async {
+  bool docExists(String collection, String docId) {
     try {
       if (!_subject.value.containsKey(collection)) {
         final result = _box.get(collection);
@@ -530,6 +530,26 @@ class KoozaImpl implements Kooza {
 
     _subject.sink.add(allData);
     await _box.put(collection, newCollection.toMap());
+  }
+
+  @override
+  bool collectionExists(String collection) {
+    try {
+      if (!_subject.value.containsKey(collection)) {
+        final result = _box.get(collection);
+        if (result != null) {
+          var allData = Map<String, dynamic>.from(_subject.value);
+          allData[collection] = result;
+          _subject.sink.add(allData);
+        }
+      }
+      return _subject.value.containsKey(collection);
+    } catch (e) {
+      throw KoozaError(
+        code: 'KOOZA_COLLECTION_EXISTS',
+        message: 'The collection ($collection) existance is unclear in Kooza',
+      );
+    }
   }
 
   @override

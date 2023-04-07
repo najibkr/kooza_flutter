@@ -96,11 +96,12 @@ abstract class Kooza {
     String collection,
     Map<String, dynamic> value, {
     String? docId,
-    String docIdKey = 'docId',
+    String docIdKey = 'id',
     Duration? ttl,
   });
 
-  Future<bool> docExists(String collection, String docId);
+  bool docExists(String collection, String docId);
+  bool collectionExists(String collection);
 
   Stream<Map<String, dynamic>?> streamDoc(String collection, String docId);
 

@@ -28,6 +28,7 @@ class KoozaCollection {
   });
 
   factory KoozaCollection.fromMap(dynamic map) {
+    if (map == null) return const KoozaCollection(docs: {});
     return KoozaCollection(
       docs: _toDocs(map),
     );

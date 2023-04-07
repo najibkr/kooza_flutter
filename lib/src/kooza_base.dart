@@ -42,6 +42,10 @@ abstract class Kooza {
     Duration? ttl,
   });
 
+  /// Reactively reads the stored int with the given `key`.
+  /// If no boolean value is saved, the returned value will be `null`.
+  Stream<int?> streamInt(String key);
+
   /// Saves the [double] `value` in memory with the assigned `key`.
   /// Use `ttl` to determine how long should the `value` remain in memory.
   /// If `ttl` is `null`, the `value` will permanently be
@@ -51,6 +55,10 @@ abstract class Kooza {
     double? value, {
     Duration? ttl,
   });
+
+  /// Reactively reads the stored double with the given `key`.
+  /// If no boolean value is saved, the returned value will be `null`.
+  Stream<double?> streamDouble(String key);
 
   /// Saves the [String] `value` in memory with the assigned `key`.
   /// Use `ttl` to determine how long should the `value` remain in memory.
@@ -62,6 +70,10 @@ abstract class Kooza {
     Duration? ttl,
   });
 
+  /// Reactively reads the stored String with the given `key`.
+  /// If no boolean value is saved, the returned value will be `null`.
+  Stream<String?> streamString(String key);
+
   /// Saves the [int] `value` in memory with the assigned `key`.
   /// Use `ttl` to determine how long should the `value` remain in memory.
   /// If `ttl` is `null`, the `value` will permanently be
@@ -71,6 +83,10 @@ abstract class Kooza {
     Map? value, {
     Duration? ttl,
   });
+
+  /// Reactively reads the stored Map<String,dynamic> with the given `key`.
+  /// If no boolean value is saved, the returned value will be `null`.
+  Stream<Map<String, dynamic>?> streamMap(String key);
 
   /// Saves the [Map<String, dynamic>] `value` in memory with the assigned `key`.
   /// Use `ttl` to determine how long should the `value` remain in memory.

@@ -1,3 +1,8 @@
 ## 0.0.1
+- Added 
+- Added setDoc method
+- Added streamDocs method
 
-* TODO: Describe initial release.
+
+## 0.0.1
+- Initiliazed the project

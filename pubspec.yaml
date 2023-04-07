@@ -1,7 +1,9 @@
 name: kooza_flutter
 description: A blazingly fast, reactive, fully asynchronous and easy to use local database for flutter
 version: 0.0.1
-homepage: https://github.com/najibkr/kooza_flutter
+homepage: "https://github.com/najibkr/kooza_flutter"
+repository: "https://github.com/najibkr/kooza_flutter"
+issue_tracker: "https://github.com/najibkr/kooza_flutter/issues"
 
 environment:
   sdk: ">=2.19.4 <3.0.0"
@@ -14,6 +16,7 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
 
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -23,6 +26,7 @@ dev_dependencies:
 # following page: https://dart.dev/tools/pub/pubspec
 # The following section is specific to Flutter packages.
 flutter: null
+
 # To add assets to your package, add an assets section, like this:
 # assets:
 #   - images/a_dot_burr.jpeg

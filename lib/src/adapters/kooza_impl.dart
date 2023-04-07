@@ -376,6 +376,7 @@ class KoozaImpl implements Kooza {
     String collection,
     Map<String, dynamic> value, {
     String? docId,
+    String docIdKey = 'docId',
     Duration? ttl,
   }) async {
     try {
@@ -392,7 +393,7 @@ class KoozaImpl implements Kooza {
       var newCollection = KoozaCollection.fromMap(_subject.value[collection]);
 
       var newValue = Map<String, dynamic>.from(value);
-      newValue['docId'] = newId;
+      newValue[docIdKey] = newId;
 
       final newDoc = KoozaDocument.init(
         timestamp: DateTime.now(),
@@ -415,6 +416,38 @@ class KoozaImpl implements Kooza {
         message: 'The doc ($value) could not be saved in Kooza',
       );
     }
+  }
+
+  @override
+  Stream<Map<String, dynamic>?> streamDoc(String collection, String docId) async* {
+    if (!_subject.value.containsKey(collection)) {
+      final result = _box.get(collection);
+      if (result != null) {
+        var allData = Map<String, dynamic>.from(_subject.value);
+        allData[collection] = result;
+        _subject.sink.add(allData);
+      }
+    }
+
+    var newCollection = KoozaCollection.fromMap(_subject.value[collection]);
+    var found = newCollection.doc(docId);
+    if (found == null) return;
+    if (found.ttl != null) {
+      final storedDuration = DateTime.now().difference(found.timestamp);
+      if (storedDuration.inMilliseconds >= found.ttl!.inMilliseconds) {
+        newCollection.docs.removeWhere((key, value) => value.docId == docId);
+        var allData = Map<String, dynamic>.from(_subject.value);
+        allData[collection] = newCollection;
+        _subject.sink.add(allData);
+        await _box.put(collection, newCollection.toMap());
+      }
+    }
+
+    yield* _subject.stream.map((event) {
+      var newCollection = KoozaCollection.fromMap(_subject.value[collection]);
+      var found = newCollection.doc(docId);
+      return found?.data;
+    });
   }
 
   @override
@@ -448,6 +481,41 @@ class KoozaImpl implements Kooza {
       if (event[collection] == null) return [];
       return KoozaCollection.fromMap(event[collection]).snapshots();
     });
+  }
+
+  @override
+  Future<void> deleteDoc(String collection, String docId) async {
+    if (!_subject.value.containsKey(collection)) {
+      final result = _box.get(collection);
+      if (result != null) {
+        var allData = Map<String, dynamic>.from(_subject.value);
+        allData[collection] = result;
+        _subject.sink.add(allData);
+      }
+    }
+    var newCollection = KoozaCollection.fromMap(_subject.value[collection]);
+    newCollection.docs.removeWhere((key, value) => key == docId);
+    var allData = Map<String, dynamic>.from(_subject.value);
+    allData[collection] = newCollection.toMap();
+
+    _subject.sink.add(allData);
+    await _box.put(collection, newCollection.toMap());
+  }
+
+  @override
+  Future<void> deleteKey(String key) async {
+    if (!_subject.value.containsKey(key)) {
+      final result = _box.get(key);
+      if (result != null) {
+        var allData = Map<String, dynamic>.from(_subject.value);
+        allData[key] = result;
+        _subject.sink.add(allData);
+      }
+    }
+    var allData = Map<String, dynamic>.from(_subject.value);
+    allData.removeWhere((k, _) => k == key);
+    _subject.sink.add(allData);
+    await _box.delete(key);
   }
 
   @override

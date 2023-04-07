@@ -96,52 +96,22 @@ abstract class Kooza {
     String collection,
     Map<String, dynamic> value, {
     String? docId,
+    String docIdKey = 'docId',
     Duration? ttl,
   });
 
+  Stream<Map<String, dynamic>?> streamDoc(String collection, String docId);
+
   Stream<List<Map<String, dynamic>>> streamDocs(String collection);
 
-  // Stream<Map<String, dynamic>?> streamDoc(
-  //   String collection,
-  //   String docId, [
-  //   String idKey = 'id',
-  // ]);
+  Future<void> deleteDoc(String collection, String docId);
 
-  // // Future<void> cacheBool(String key, bool value);
-  // Stream<bool?> streamBool(String key);
-  // Future<bool?> getBool(String key);
-
-  // Future<void> cacheInt(String key, int value);
-  // Stream<int?> streamInt(String key);
-  // Future<int?> getInt(String key);
-
-  // Future<void> cacheDouble(String key, double value);
-  // Stream<double?> streamDouble(String key);
-  // Future<double?> getDouble(String key);
-
-  // Future<void> cacheString(String key, String? value);
-  // Stream<String?> streamString(String key);
-  // Future<String?> getString(String key);
-  // Future<void> cacheMap(String key, Map<String, dynamic> value);
-  // Stream<Map<String, dynamic>?> streamMap(String key);
-  // Future<Map<String, dynamic>?> getMap(String key);
-
-  // Future<void> cacheDoc(
-  //   String collection,
-  //   Map<String, dynamic> doc, [
-  //   String idKey = 'id',
-  // ]);
-
-  // Stream<Map<String, dynamic>?> streamDoc(
-  //   String collection,
-  //   String docId, [
-  //   String idKey = 'id',
-  // ]);
   // Future<Map<String, dynamic>?> getDoc(
   //   String collection,
   //   String docId, [
   //   String idKey = 'id',
   // ]);
+
   // Stream<List<Map<String, dynamic>>> streamDocs(String collection);
   // Future<List<Map<String, dynamic>>> getDocs(String collection);
   // Future<void> deleteDoc(
@@ -149,7 +119,7 @@ abstract class Kooza {
   //   String docId, [
   //   String idKey = 'id',
   // ]);
-  // Future<void> deleteCollection(String collection);
+  Future<void> deleteKey(String key);
 
   Future<void> close();
 }

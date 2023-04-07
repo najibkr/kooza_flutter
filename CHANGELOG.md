@@ -10,7 +10,10 @@
 - Added streamDouble
 - Added streamString
 - Added streamMap
+- Added streamDoc
 - Added streamDocs
+- Added deleteDoc
+- Added deletKey
 
 
 ## 0.0.1

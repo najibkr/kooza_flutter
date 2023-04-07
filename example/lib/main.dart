@@ -23,6 +23,7 @@ class MyApp extends StatelessWidget {
         child: BlocSelector<ChatBloc, ChatState, bool>(
           selector: (state) => state.darkMode,
           builder: (context, state) => MaterialApp(
+            debugShowCheckedModeBanner: false,
             title: 'Flutter Demo',
             theme: ThemeData(
               brightness: state ? Brightness.dark : Brightness.light,
@@ -42,7 +43,15 @@ class MyHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Kooza')),
+      appBar: AppBar(
+        title: const Text('Kooza'),
+        actions: [
+          IconButton(
+            onPressed: () => context.read<ChatBloc>().deleteAll(),
+            icon: const Icon(Icons.delete),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           BlocSelector<ChatBloc, ChatState, bool>(
@@ -67,6 +76,29 @@ class MyHomePage extends StatelessWidget {
             hint: 'Enter User Name',
             onPressed: (value) => context.read<ChatBloc>().saveUser(value),
           ),
+          InputField(
+            hint: 'Enter Message Id',
+            onPressed: (value) => context.read<ChatBloc>().streamMessage(value),
+          ),
+          InputField(
+            hint: 'Enter Message Id',
+            onPressed: (value) => context.read<ChatBloc>().setId(value),
+          ),
+          InputField(
+            hint: 'Updated Message',
+            onPressed: (value) => context.read<ChatBloc>().updateMessage(value),
+          ),
+          BlocSelector<ChatBloc, ChatState, Message?>(
+            selector: (state) => state.message,
+            builder: (context, state) => Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Text(
+                state?.message ?? '',
+                style: Theme.of(context).textTheme.bodyLarge,
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
           Expanded(
             child: BlocSelector<ChatBloc, ChatState, List<Message>>(
               selector: (state) => state.messages,
@@ -77,7 +109,12 @@ class MyHomePage extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final message = state[index];
                     return ListTile(
+                      leading: IconButton(
+                        onPressed: () => context.read<ChatBloc>().deleteMessage(message.id),
+                        icon: const Icon(Icons.delete),
+                      ),
                       title: Text(message.message ?? 'no message'),
+                      subtitle: Text(message.id ?? ''),
                     );
                   },
                 );

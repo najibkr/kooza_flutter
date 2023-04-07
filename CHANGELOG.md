@@ -1,3 +1,7 @@
+## 0.0.5
+- Added collection Exists
+- Fixed Bugs
+
 ## 0.0.4
 - Added docExists method to Kooza
 

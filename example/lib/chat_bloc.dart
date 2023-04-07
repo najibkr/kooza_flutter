@@ -105,7 +105,6 @@ class ChatBloc extends Cubit<ChatState> {
   void streamMessages() {
     _messagesSub?.cancel();
     _messagesSub = kooza.streamDocs('messages').listen((event) {
-      print('messages: $event');
       var messages = event.map((e) => Message.fromMap(e)).toList();
       emit(state.copyWith(messages: messages));
       // ignore: avoid_print
@@ -150,7 +149,9 @@ class ChatBloc extends Cubit<ChatState> {
         docId: state.id,
       );
     } catch (e) {
-      print("update message: $e");
+      if (kDebugMode) {
+        print("update message: $e");
+      }
     }
   }
 

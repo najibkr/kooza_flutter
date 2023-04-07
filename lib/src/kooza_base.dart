@@ -100,6 +100,8 @@ abstract class Kooza {
     Duration? ttl,
   });
 
+  Future<bool> docExists(String collection, String docId);
+
   Stream<Map<String, dynamic>?> streamDoc(String collection, String docId);
 
   Stream<List<Map<String, dynamic>>> streamDocs(String collection);

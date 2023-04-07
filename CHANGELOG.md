@@ -1,3 +1,6 @@
+## 0.0.4
+- Added docExists method to Kooza
+
 ## 0.0.3
 - Updated README.md file
 

@@ -79,7 +79,8 @@ class KoozaImpl implements Kooza {
       }
     }
 
-    var val = KoozaValue.fromMap(Map<String, dynamic>.from(_subject.value[key] ?? {}));
+    var val = KoozaValue.fromMap(
+        Map<String, dynamic>.from(_subject.value[key] ?? {}));
     if (val.ttl != null) {
       final storedDuration = DateTime.now().difference(val.timestamp);
       if (storedDuration.inMilliseconds >= val.ttl!.inMilliseconds) {
@@ -172,7 +173,8 @@ class KoozaImpl implements Kooza {
       }
     }
 
-    var val = KoozaValue.fromMap(Map<String, dynamic>.from(_subject.value[key] ?? {}));
+    var val = KoozaValue.fromMap(
+        Map<String, dynamic>.from(_subject.value[key] ?? {}));
     if (val.ttl != null) {
       final storedDuration = DateTime.now().difference(val.timestamp);
       if (storedDuration.inMilliseconds >= val.ttl!.inMilliseconds) {
@@ -232,7 +234,8 @@ class KoozaImpl implements Kooza {
       }
     }
 
-    var val = KoozaValue.fromMap(Map<String, dynamic>.from(_subject.value[key] ?? {}));
+    var val = KoozaValue.fromMap(
+        Map<String, dynamic>.from(_subject.value[key] ?? {}));
     if (val.ttl != null) {
       final storedDuration = DateTime.now().difference(val.timestamp);
       if (storedDuration.inMilliseconds >= val.ttl!.inMilliseconds) {
@@ -292,7 +295,8 @@ class KoozaImpl implements Kooza {
       }
     }
 
-    var val = KoozaValue.fromMap(Map<String, dynamic>.from(_subject.value[key] ?? {}));
+    var val = KoozaValue.fromMap(
+        Map<String, dynamic>.from(_subject.value[key] ?? {}));
     if (val.ttl != null) {
       final storedDuration = DateTime.now().difference(val.timestamp);
       if (storedDuration.inMilliseconds >= val.ttl!.inMilliseconds) {
@@ -352,7 +356,8 @@ class KoozaImpl implements Kooza {
       }
     }
 
-    var val = KoozaValue.fromMap(Map<String, dynamic>.from(_subject.value[key] ?? {}));
+    var val = KoozaValue.fromMap(
+        Map<String, dynamic>.from(_subject.value[key] ?? {}));
     if (val.ttl != null) {
       final storedDuration = DateTime.now().difference(val.timestamp);
       if (storedDuration.inMilliseconds >= val.ttl!.inMilliseconds) {
@@ -412,14 +417,39 @@ class KoozaImpl implements Kooza {
       return newId;
     } catch (e) {
       throw KoozaError(
-        code: 'KOOZA_SET_DOc',
+        code: 'KOOZA_SET_DOC',
         message: 'The doc ($value) could not be saved in Kooza',
       );
     }
   }
 
   @override
-  Stream<Map<String, dynamic>?> streamDoc(String collection, String docId) async* {
+  Future<bool> docExists(String collection, String docId) async {
+    try {
+      if (!_subject.value.containsKey(collection)) {
+        final result = _box.get(collection);
+        if (result != null) {
+          var allData = Map<String, dynamic>.from(_subject.value);
+          allData[collection] = result;
+          _subject.sink.add(allData);
+        }
+      }
+
+      var newCollection = KoozaCollection.fromMap(_subject.value[collection]);
+      return newCollection.docs.containsKey(docId);
+    } catch (e) {
+      throw KoozaError(
+        code: 'KOOZA_DOC_EXISTS',
+        message: 'The doc ($docId) existance is unclear in Kooza',
+      );
+    }
+  }
+
+  @override
+  Stream<Map<String, dynamic>?> streamDoc(
+    String collection,
+    String docId,
+  ) async* {
     if (!_subject.value.containsKey(collection)) {
       final result = _box.get(collection);
       if (result != null) {

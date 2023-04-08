@@ -4,7 +4,7 @@ import 'package:kooza_flutter/kooza_flutter.dart';
 void main() {
   group('Testing Set and Fetch Bool', () {
     Kooza? kooza;
-    setUp(() async => kooza = await Kooza.getInstance('chat'));
+    setUp(() async => kooza = await Kooza.init('chat'));
     tearDown(() => kooza = null);
 
     test('Testing Kooza.setBool', () async {

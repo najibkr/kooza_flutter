@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 import 'chat_bloc.dart';
 
 void main() async {
-  final kooza = await Kooza.getInstance('chat');
+  final kooza = await Kooza.init('chat');
   runApp(MyApp(kooza: kooza));
 }
 
@@ -110,7 +110,8 @@ class MyHomePage extends StatelessWidget {
                     final message = state[index];
                     return ListTile(
                       leading: IconButton(
-                        onPressed: () => context.read<ChatBloc>().deleteMessage(message.id),
+                        onPressed: () =>
+                            context.read<ChatBloc>().deleteMessage(message.id),
                         icon: const Icon(Icons.delete),
                       ),
                       title: Text(message.message ?? 'no message'),

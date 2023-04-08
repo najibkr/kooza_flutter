@@ -6,12 +6,14 @@ export 'domain/kooza_document.dart';
 export 'domain/kooza_error.dart';
 
 abstract class Kooza {
-  static Future<Kooza> getInstance(
+  /// Initializes an instance of Kooza.
+  /// Please remember to close it when you are not using it.
+  static Future<Kooza> init(
     String dbName, {
-    String storageDirectory = 'kooza',
+    String path = 'kooza',
   }) async {
-    await Hive.initFlutter(storageDirectory);
-    return KoozaImpl.getInstance(dbName);
+    await Hive.initFlutter(path);
+    return KoozaImpl.init(dbName);
   }
 
   /// Saves the [bool] `value` in memory with the assigned `key`.
@@ -100,20 +102,20 @@ abstract class Kooza {
     Duration? ttl,
   });
 
+  /// Checks if the document with the assigned `docId` is available
+  /// in the given `collection`
   bool docExists(String collection, String docId);
+
+  /// Checks if a speficis collection exists.
   bool collectionExists(String collection);
 
   Stream<Map<String, dynamic>?> streamDoc(String collection, String docId);
 
+  Future<Map<String, dynamic>?> fetchDoc(String collection, String docId);
+
   Stream<List<Map<String, dynamic>>> streamDocs(String collection);
-
+  Future<List<Map<String, dynamic>>> fetchDocs(String collection);
   Future<void> deleteDoc(String collection, String docId);
-
-  // Future<Map<String, dynamic>?> getDoc(
-  //   String collection,
-  //   String docId, [
-  //   String idKey = 'id',
-  // ]);
 
   // Stream<List<Map<String, dynamic>>> streamDocs(String collection);
   // Future<List<Map<String, dynamic>>> getDocs(String collection);

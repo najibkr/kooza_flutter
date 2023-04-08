@@ -19,17 +19,12 @@ class KoozaImpl implements Kooza {
         _box = box,
         _rand = rand;
 
-  static KoozaImpl? _uniqueInstance;
-
-  static Future<KoozaImpl> getInstance(String dbName) async {
+  static Future<KoozaImpl> init(String dbName) async {
     try {
-      if (_uniqueInstance == null) {
-        final box = await Hive.openBox(dbName);
-        final subject = BehaviorSubject<Map<String, dynamic>>.seeded({});
-        final rand = Random(DateTime.now().microsecondsSinceEpoch);
-        _uniqueInstance = KoozaImpl._(subject: subject, box: box, rand: rand);
-      }
-      return _uniqueInstance!;
+      final box = await Hive.openBox(dbName);
+      final subject = BehaviorSubject<Map<String, dynamic>>.seeded({});
+      final rand = Random(DateTime.now().microsecondsSinceEpoch);
+      return KoozaImpl._(subject: subject, box: box, rand: rand);
     } catch (e) {
       throw const KoozaError(
         code: 'KOOZA_GET_INSTANCE',
@@ -481,6 +476,63 @@ class KoozaImpl implements Kooza {
   }
 
   @override
+  Future<Map<String, dynamic>?> fetchDoc(
+    String collection,
+    String docId,
+  ) async {
+    if (!_subject.value.containsKey(collection)) {
+      final result = _box.get(collection);
+      if (result != null) {
+        var allData = Map<String, dynamic>.from(_subject.value);
+        allData[collection] = result;
+        _subject.sink.add(allData);
+      }
+    }
+
+    var newCollection = KoozaCollection.fromMap(_subject.value[collection]);
+    var found = newCollection.doc(docId);
+    if (found == null) return null;
+
+    if (found.ttl != null) {
+      final storedDuration = DateTime.now().difference(found.timestamp);
+      if (storedDuration.inMilliseconds >= found.ttl!.inMilliseconds) {
+        newCollection.docs.removeWhere((key, value) => value.docId == docId);
+        var allData = Map<String, dynamic>.from(_subject.value);
+        allData[collection] = newCollection;
+        _subject.sink.add(allData);
+        await _box.put(collection, newCollection.toMap());
+        return null;
+      }
+    }
+
+    var coll = KoozaCollection.fromMap(_subject.value[collection]);
+    return coll.doc(docId)?.data;
+  }
+
+  @override
+  bool collectionExists(String collection) {
+    try {
+      if (!_subject.value.containsKey(collection)) {
+        final result = _box.get(collection);
+        if (result != null) {
+          var allData = Map<String, dynamic>.from(_subject.value);
+          allData[collection] = result;
+          _subject.sink.add(allData);
+        }
+      }
+      final collectionExists = _subject.value.containsKey(collection);
+      var newCollection = KoozaCollection.fromMap(_subject.value[collection]);
+      var isNotEmpty = newCollection.docs.isNotEmpty;
+      return collectionExists && isNotEmpty;
+    } catch (e) {
+      throw KoozaError(
+        code: 'KOOZA_COLLECTION_EXISTS',
+        message: 'The collection ($collection) existance is unclear in Kooza',
+      );
+    }
+  }
+
+  @override
   Stream<List<Map<String, dynamic>>> streamDocs(String collection) async* {
     if (!_subject.value.containsKey(collection)) {
       final result = _box.get(collection);
@@ -514,6 +566,35 @@ class KoozaImpl implements Kooza {
   }
 
   @override
+  Future<List<Map<String, dynamic>>> fetchDocs(String collection) async {
+    if (!_subject.value.containsKey(collection)) {
+      final result = _box.get(collection);
+      if (result != null) {
+        var allData = Map<String, dynamic>.from(_subject.value);
+        allData[collection] = result;
+        _subject.sink.add(allData);
+      }
+    }
+
+    var newCollection = KoozaCollection.fromMap(_subject.value[collection]);
+    var newDocs = Map<String, KoozaDocument>.from(newCollection.docs);
+    newDocs.removeWhere((_, v) {
+      if (v.ttl == null) return false;
+      final storedDuration = DateTime.now().difference(v.timestamp);
+      if (storedDuration.inMilliseconds >= v.ttl!.inMilliseconds) return true;
+      return false;
+    });
+
+    newCollection = newCollection.copyWith(docs: newDocs);
+    var allData = Map<String, dynamic>.from(_subject.value);
+    allData[collection] = newCollection.toMap();
+
+    _subject.sink.add(allData);
+    await _box.put(collection, newCollection.toMap());
+    return newCollection.snapshots();
+  }
+
+  @override
   Future<void> deleteDoc(String collection, String docId) async {
     if (!_subject.value.containsKey(collection)) {
       final result = _box.get(collection);
@@ -530,26 +611,6 @@ class KoozaImpl implements Kooza {
 
     _subject.sink.add(allData);
     await _box.put(collection, newCollection.toMap());
-  }
-
-  @override
-  bool collectionExists(String collection) {
-    try {
-      if (!_subject.value.containsKey(collection)) {
-        final result = _box.get(collection);
-        if (result != null) {
-          var allData = Map<String, dynamic>.from(_subject.value);
-          allData[collection] = result;
-          _subject.sink.add(allData);
-        }
-      }
-      return _subject.value.containsKey(collection);
-    } catch (e) {
-      throw KoozaError(
-        code: 'KOOZA_COLLECTION_EXISTS',
-        message: 'The collection ($collection) existance is unclear in Kooza',
-      );
-    }
   }
 
   @override

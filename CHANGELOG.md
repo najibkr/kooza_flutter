@@ -1,3 +1,7 @@
+## 0.0.6
+- Added more features
+- Fixed Buges
+
 ## 0.0.5
 - Added collection Exists
 - Fixed Bugs

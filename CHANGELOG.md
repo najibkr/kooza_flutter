@@ -1,3 +1,6 @@
+## 1.0.2
+- Added image
+
 ## 1.0.1
 - Added more features and methods to KoozaCollection
 - Updated README.md file

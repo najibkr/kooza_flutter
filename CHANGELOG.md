@@ -1,3 +1,7 @@
+## 1.0.0
+- Breaking Changes
+- Fixed Bugs
+
 ## 0.0.6
 - Added more features
 - Fixed Buges

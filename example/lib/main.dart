@@ -1,175 +1,344 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:kooza_flutter/kooza_flutter.dart';
 import 'package:provider/provider.dart';
 
-import 'chat_bloc.dart';
+class Product {
+  final String? id;
+  final String? name;
+  final double? price;
+  const Product({this.id, this.name, this.price});
 
-void main() async {
-  final kooza = await Kooza.init('chat');
-  runApp(MyApp(kooza: kooza));
+  Product copyWith({
+    String? id,
+    String? name,
+    double? price,
+  }) {
+    return Product(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      price: price ?? this.price,
+    );
+  }
+
+  factory Product.fromMap(Map<String, dynamic>? map, [String? id]) {
+    if (map == null) return const Product();
+    return Product(
+      id: id,
+      name: map['name'],
+      price: (map['price'] as num?)?.toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    var map = <String, dynamic>{
+      'id': id,
+      'name': name,
+      'price': price,
+    };
+    map.removeWhere((key, value) => value == null);
+    return map;
+  }
 }
 
-class MyApp extends StatelessWidget {
-  final Kooza kooza;
-  const MyApp({super.key, required this.kooza});
+class ProductsState {
+  final bool isDarkMode;
+  final Product product;
+  final List<Product> products;
+
+  const ProductsState({
+    this.isDarkMode = false,
+    this.product = const Product(),
+    this.products = const [],
+  });
+
+  ProductsState copyWith({
+    bool? isDarkMode,
+    Product? product,
+    List<Product>? products,
+  }) {
+    return ProductsState(
+      isDarkMode: isDarkMode ?? this.isDarkMode,
+      product: product ?? this.product,
+      products: products ?? this.products,
+    );
+  }
+}
+
+class ProductsBloc extends Cubit<ProductsState> {
+  final Kooza _kooza;
+  ProductsBloc(Kooza kooza)
+      : _kooza = kooza,
+        super(const ProductsState()) {
+    streamDarkMode();
+    streamProducts();
+  }
+
+  void setProductId(String? id) {
+    emit(state.copyWith(product: state.product.copyWith(id: id)));
+  }
+
+  void setProductName(String? name) {
+    emit(state.copyWith(product: state.product.copyWith(name: name)));
+  }
+
+  void setProductPrice(String? price) {
+    final newPrice = double.tryParse(price ?? '0.0');
+    emit(state.copyWith(product: state.product.copyWith(price: newPrice)));
+  }
+
+  StreamSubscription<List<Product>>? _producstsSub;
+  void streamProducts() {
+    final ref = _kooza.collection('products').snapshots();
+    final productsStream = ref.map((collection) => collection.docs.values
+        .map((doc) => Product.fromMap(doc.data, doc.id))
+        .toList());
+    _producstsSub?.cancel();
+    _producstsSub = productsStream.listen((products) {
+      emit(state.copyWith(products: products));
+      // ignore: avoid_print
+    }, onError: (e) => kDebugMode ? print('Error: $e') : null);
+  }
+
+  void fetchProducts() async {
+    try {
+      await _producstsSub?.cancel();
+      final ref = await _kooza.collection('products').get();
+      final result = ref.docs.values
+          .map((doc) => Product.fromMap(doc.data, doc.id))
+          .toList();
+      emit(state.copyWith(products: result));
+    } catch (e) {
+      if (kDebugMode) print('Error fetching products: $e');
+    }
+  }
+
+  void saveProduct() async {
+    try {
+      final id = await _kooza.collection('products').add(
+            state.product.toMap(),
+            docID: state.product.id,
+          );
+      emit(state.copyWith(product: state.product.copyWith(id: id)));
+    } catch (e) {
+      if (kDebugMode) print('Error saving products: $e');
+    }
+  }
+
+  void deleteProduct(String? id) async {
+    try {
+      if (id == null) return;
+      await _kooza.collection('products').doc(id).delete();
+    } catch (e) {
+      if (kDebugMode) print('Error saving products: $e');
+    }
+  }
+
+  void deleteAll() async {
+    try {
+      await _kooza.collection('products').delete();
+    } catch (e) {
+      if (kDebugMode) print('Error saving products: $e');
+    }
+  }
+
+  StreamSubscription? _darkmodeSub;
+  void streamDarkMode() {
+    _darkmodeSub?.cancel();
+    _darkmodeSub = _kooza.singleDoc('isDarkMode').snapshots().listen(
+        (event) => emit(state.copyWith(isDarkMode: event.data as bool?)));
+  }
+
+  void setDarkMode(bool value) async {
+    try {
+      await _kooza.singleDoc('isDarkMode').set(value);
+    } catch (e) {
+      if (kDebugMode) print(e);
+    }
+  }
+
+  @override
+  Future<void> close() async {
+    await _producstsSub?.cancel();
+    await _kooza.close();
+    return super.close();
+  }
+}
+
+void main() async {
+  await Kooza.ensureInitialize();
+  runApp(const AppDataProvider());
+}
+
+class AppDataProvider extends StatelessWidget {
+  const AppDataProvider({super.key});
   @override
   Widget build(BuildContext context) {
     return Provider(
-      create: (context) => kooza,
-      dispose: (context, value) => value.close(),
+      create: (context) => Kooza.instance('products'),
+      dispose: (_, kooza) async => await kooza.close(),
       child: BlocProvider(
-        create: (context) => ChatBloc(context.read<Kooza>()),
-        child: BlocSelector<ChatBloc, ChatState, bool>(
-          selector: (state) => state.darkMode,
-          builder: (context, state) => MaterialApp(
-            debugShowCheckedModeBanner: false,
-            title: 'Flutter Demo',
-            theme: ThemeData(
-              brightness: state ? Brightness.dark : Brightness.light,
-              primarySwatch: Colors.blue,
-            ),
-            home: const MyHomePage(),
+        create: (c) => ProductsBloc(c.read<Kooza>()),
+        child: const AppGeneralSetup(),
+      ),
+    );
+  }
+}
+
+class AppGeneralSetup extends StatelessWidget {
+  const AppGeneralSetup({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return BlocSelector<ProductsBloc, ProductsState, bool>(
+      selector: (state) => state.isDarkMode,
+      builder: (context, isDarkMode) => MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Kooza Example App',
+        theme: isDarkMode ? ThemeData.dark() : ThemeData.light(),
+        home: const KoozaHomePage(),
+      ),
+    );
+  }
+}
+
+class FormCreateProduct extends StatefulWidget {
+  const FormCreateProduct({super.key});
+
+  @override
+  State<FormCreateProduct> createState() => _FormCreateProductState();
+}
+
+class _FormCreateProductState extends State<FormCreateProduct> {
+  final _formKey = GlobalKey<FormState>();
+
+  void _saveProduct(BuildContext context) {
+    final formState = _formKey.currentState;
+    if (formState?.validate() == true) {
+      formState?.save();
+      context.read<ProductsBloc>().saveProduct();
+      formState?.reset();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final idField = BlocSelector<ProductsBloc, ProductsState, String?>(
+      selector: (state) => state.product.id,
+      builder: (context, id) => TextFormField(
+        decoration: const InputDecoration(hintText: 'Product ID'),
+        initialValue: id,
+        onSaved: context.read<ProductsBloc>().setProductId,
+      ),
+    );
+
+    final nameField = BlocSelector<ProductsBloc, ProductsState, String?>(
+      selector: (state) => state.product.name,
+      builder: (context, name) => TextFormField(
+        decoration: const InputDecoration(hintText: 'Product Name'),
+        initialValue: name,
+        validator: (v) => (v?.trim().isEmpty ?? true) ? 'Add Name' : null,
+        onSaved: context.read<ProductsBloc>().setProductName,
+      ),
+    );
+
+    final priceField = BlocSelector<ProductsBloc, ProductsState, double?>(
+      selector: (state) => state.product.price,
+      builder: (context, price) => TextFormField(
+        decoration: const InputDecoration(hintText: 'Product Price'),
+        initialValue: price?.toString(),
+        onSaved: context.read<ProductsBloc>().setProductPrice,
+      ),
+    );
+
+    final saveBtn = TextButton(
+      onPressed: () => _saveProduct(context),
+      child: const Padding(padding: EdgeInsets.all(8.0), child: Text("Save")),
+    );
+
+    final fields = Padding(
+      padding: const EdgeInsets.all(40.0),
+      child: Column(children: [idField, nameField, priceField, saveBtn]),
+    );
+
+    return Form(key: _formKey, child: fields);
+  }
+}
+
+class ListProducts extends StatelessWidget {
+  const ListProducts({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocSelector<ProductsBloc, ProductsState, List<Product>>(
+      selector: (state) => state.products,
+      builder: (context, products) => ListView.builder(
+        itemCount: products.length,
+        itemBuilder: (context, index) => ListTile(
+          leading: IconButton(
+            onPressed: () =>
+                context.read<ProductsBloc>().deleteProduct(products[index].id),
+            icon: const Icon(Icons.delete),
           ),
+          trailing: Text(products[index].price?.toString() ?? '0.0'),
+          title: Text(products[index].name ?? ''),
+          subtitle: Text(products[index].id ?? ''),
         ),
       ),
     );
   }
 }
 
-class MyHomePage extends StatelessWidget {
-  const MyHomePage({super.key});
+class KoozaHomePage extends StatelessWidget {
+  const KoozaHomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final darkModeBtn = BlocSelector<ProductsBloc, ProductsState, bool>(
+      selector: (state) => state.isDarkMode,
+      builder: (context, state) => Switch(
+        onChanged: (v) => context.read<ProductsBloc>().setDarkMode(v),
+        value: state,
+      ),
+    );
+
+    final deleteAllBtn = IconButton(
+      onPressed: () => context.read<ProductsBloc>().deleteAll(),
+      icon: const Icon(Icons.delete),
+    );
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Kooza'),
-        actions: [
-          IconButton(
-            onPressed: () => context.read<ChatBloc>().deleteAll(),
-            icon: const Icon(Icons.delete),
-          ),
-        ],
+        title: const Text('Kooza Example App'),
+        actions: [darkModeBtn, deleteAllBtn],
       ),
       body: Column(
-        children: [
-          BlocSelector<ChatBloc, ChatState, bool>(
-            selector: (state) => state.darkMode,
-            builder: (context, state) => Switch(
-              onChanged: context.read<ChatBloc>().setDarkMode,
-              value: state,
-            ),
-          ),
-          BlocSelector<ChatBloc, ChatState, String>(
-            selector: (state) => state.user ?? '',
-            builder: (context, state) => Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                state,
-                style: Theme.of(context).textTheme.headlineSmall,
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-          InputField(
-            hint: 'Enter User Name',
-            onPressed: (value) => context.read<ChatBloc>().saveUser(value),
-          ),
-          InputField(
-            hint: 'Enter Message Id',
-            onPressed: (value) => context.read<ChatBloc>().streamMessage(value),
-          ),
-          InputField(
-            hint: 'Enter Message Id',
-            onPressed: (value) => context.read<ChatBloc>().setId(value),
-          ),
-          InputField(
-            hint: 'Updated Message',
-            onPressed: (value) => context.read<ChatBloc>().updateMessage(value),
-          ),
-          BlocSelector<ChatBloc, ChatState, Message?>(
-            selector: (state) => state.message,
-            builder: (context, state) => Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Text(
-                state?.message ?? '',
-                style: Theme.of(context).textTheme.bodyLarge,
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-          Expanded(
-            child: BlocSelector<ChatBloc, ChatState, List<Message>>(
-              selector: (state) => state.messages,
-              builder: (context, state) {
-                return ListView.builder(
-                  itemCount: state.length,
-                  padding: const EdgeInsets.only(bottom: 200),
-                  itemBuilder: (context, index) {
-                    final message = state[index];
-                    return ListTile(
-                      leading: IconButton(
-                        onPressed: () =>
-                            context.read<ChatBloc>().deleteMessage(message.id),
-                        icon: const Icon(Icons.delete),
-                      ),
-                      title: Text(message.message ?? 'no message'),
-                      subtitle: Text(message.id ?? ''),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
+        children: const [
+          FormCreateProduct(),
+          Expanded(child: ListProducts()),
         ],
-      ),
-      floatingActionButton: InputField(
-        hint: 'Enter a new message',
-        onPressed: (value) => context.read<ChatBloc>().saveMessage(value),
       ),
     );
   }
 }
 
-class InputField extends StatefulWidget {
-  final void Function(String value) onPressed;
+class ProductInputField extends StatelessWidget {
+  final void Function(String? value) onSaved;
   final String hint;
-  const InputField({
+
+  const ProductInputField({
     super.key,
-    required this.onPressed,
+    required this.onSaved,
     required this.hint,
   });
 
   @override
-  State<InputField> createState() => _InputFieldState();
-}
-
-class _InputFieldState extends State<InputField> {
-  String message = 'No content yet';
-  @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context).scaffoldBackgroundColor;
-    return Container(
-      color: theme,
-      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 20),
-      height: 50,
-      width: MediaQuery.of(context).size.width,
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              decoration: InputDecoration(hintText: widget.hint),
-              onChanged: (value) => setState(() => message = value),
-            ),
-          ),
-          const SizedBox(width: 10),
-          TextButton(
-            onPressed: () => widget.onPressed(message),
-            child: const Icon(Icons.send),
-          ),
-        ],
-      ),
+    return TextFormField(
+      decoration: InputDecoration(hintText: hint),
+      onSaved: onSaved,
     );
   }
 }

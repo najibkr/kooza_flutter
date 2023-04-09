@@ -22,7 +22,9 @@ class KoozaError implements Exception {
   }
 
   factory KoozaError.fromMap(Map<String, dynamic>? map) {
-    if (map == null) return const KoozaError(code: 'UNKNOWN', message: 'UNKNOWN');
+    if (map == null) {
+      return const KoozaError(code: 'UNKNOWN', message: 'UNKNOWN');
+    }
     return KoozaError(
       code: (map['code'] as String?) ?? 'UNKNOWN',
       message: (map['message'] as String?) ?? 'UNKNOWN',

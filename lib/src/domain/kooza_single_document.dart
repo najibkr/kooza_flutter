@@ -1,4 +1,4 @@
-class KoozaDocument<T extends Object?> {
+class KoozaSingleDocument<T extends Object?> {
   /// This document's given ID for this document.
   final String id;
 
@@ -15,30 +15,22 @@ class KoozaDocument<T extends Object?> {
   /// returns true if the document exists
   bool get exists => data != null;
 
-  const KoozaDocument._({
+  KoozaSingleDocument set(T data) => copyWith(data: data);
+
+  const KoozaSingleDocument._({
     required this.id,
     required this.data,
     required this.creationDate,
     required this.ttl,
   });
 
-  factory KoozaDocument.fromDynamicData(KoozaDocument<dynamic>? doc) {
-    if (doc == null) return KoozaDocument<T>.init();
-    return KoozaDocument<T>._(
-      id: doc.id,
-      data: doc.data,
-      creationDate: doc.creationDate,
-      ttl: doc.ttl,
-    );
-  }
-
-  factory KoozaDocument.init({
+  factory KoozaSingleDocument.init({
     String? id,
     T? data,
     DateTime? creationDate,
     Duration? ttl,
   }) {
-    return KoozaDocument<T>._(
+    return KoozaSingleDocument._(
       id: id ?? '',
       data: data,
       creationDate: creationDate ?? DateTime.now(),
@@ -46,13 +38,13 @@ class KoozaDocument<T extends Object?> {
     );
   }
 
-  KoozaDocument<T> copyWith({
+  KoozaSingleDocument copyWith({
     String? id,
     T? data,
     DateTime? creationDate,
     Duration? ttl,
   }) {
-    return KoozaDocument<T>._(
+    return KoozaSingleDocument._(
       id: id ?? this.id,
       data: data ?? this.data,
       creationDate: creationDate ?? this.creationDate,
@@ -60,10 +52,10 @@ class KoozaDocument<T extends Object?> {
     );
   }
 
-  factory KoozaDocument.fromMap(dynamic map) {
-    if (map == null) return KoozaDocument<T>.init();
+  factory KoozaSingleDocument.fromMap(dynamic map) {
+    if (map == null) return KoozaSingleDocument.init();
     final newMap = Map<String, dynamic>.from(map);
-    return KoozaDocument<T>._(
+    return KoozaSingleDocument<T>._(
       id: newMap['id'] ?? '',
       data: _dataToType<T>(newMap['data']),
       creationDate: _toDateTime(newMap['creationDate']),
@@ -75,7 +67,7 @@ class KoozaDocument<T extends Object?> {
     var map = <String, dynamic>{
       'id': id,
       'data': data,
-      'creationDate': creationDate.toIso8601String(),
+      'creationDate': creationDate,
       'ttl': ttl?.inMilliseconds,
     };
     map.removeWhere((key, value) => value == null);
@@ -84,28 +76,14 @@ class KoozaDocument<T extends Object?> {
 
   static T? _dataToType<T extends Object?>(dynamic data) {
     if (data == null) return null;
-    if ('${data.runtimeType}'.contains('_Map<dynamic, dynamic>') ||
-        T == Map<String, dynamic>) {
+    if (T == Map<String, dynamic>) {
       return Map<String, dynamic>.from(data) as T?;
-    } else if ('${data.runtimeType}'.contains('List<dynamic>')) {
-      var list = List<dynamic>.from(data);
-      var listOfMap = <Map<String, dynamic>>[];
-      var listOfDynamic = <dynamic>[];
-      for (var e in list) {
-        if ('${e.runtimeType}'.contains('_Map<dynamic, dynamic>')) {
-          listOfMap.add(Map<String, dynamic>.from(e));
-        } else {
-          listOfDynamic.add(e);
-        }
-      }
-      if (listOfMap.isNotEmpty) return listOfMap as T?;
-      return listOfDynamic as T?;
     }
     return data as T?;
   }
 
-  static DateTime _toDateTime(dynamic creationDate) {
-    return DateTime.tryParse(creationDate ?? '') ?? DateTime.now();
+  static DateTime _toDateTime(dynamic timestamp) {
+    return DateTime.tryParse(timestamp ?? '') ?? DateTime.now();
   }
 
   static Duration? _toDuration(dynamic ttl) {

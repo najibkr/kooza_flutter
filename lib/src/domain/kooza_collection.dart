@@ -25,6 +25,26 @@ class KoozaCollection<T extends Object?> {
     return copyWith(docs: newDocs);
   }
 
+  KoozaCollection<T> update(String documentId, T data) {
+    var newDocs = Map<String, KoozaDocument<T>>.from(docs);
+    var document = newDocs[documentId];
+    if (document == null) return copyWith();
+    var newDoc = KoozaDocument<T>.init(
+      id: document.id,
+      data: data,
+      creationDate: document.creationDate,
+      ttl: document.ttl,
+    );
+    newDocs[documentId] = newDoc;
+    return copyWith(docs: newDocs);
+  }
+
+  KoozaCollection<T> delete(String documentId) {
+    var newDocs = Map<String, KoozaDocument<T>>.from(docs);
+    newDocs.removeWhere((key, value) => key == documentId);
+    return copyWith(docs: newDocs);
+  }
+
   KoozaCollection<T> copyWith({
     Map<String, KoozaDocument<T>>? docs,
   }) {

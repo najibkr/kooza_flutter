@@ -1,12 +1,13 @@
 ## About Kooza
 A blazingly fast, reactive, fully asynchronous local database for dart projects.
-
+------------------------------------------------------------------------
+![Kooza](./kooza.jpg)  
 ## Getting Started
 **STEP ONE:** Please, add `kooza_flutter` to your package dependencies:
 ```code
 flutter pub add kooza_flutter
 ```
-**STEP TWO:** Please, make sure to initialize to initialize `Kooza` in your main.dart file: 
+**STEP TWO:** Please, make sure to initialize `Kooza` in your main.dart file: 
 ```dart 
 void main() async {
   await Kooza.ensureInitialize();

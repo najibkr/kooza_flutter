@@ -118,10 +118,7 @@ class ProductsBloc extends Cubit<ProductsState> {
 
   void saveProduct() async {
     try {
-      final id = await _kooza.collection('products').add(
-            state.product.toMap(),
-            docID: state.product.id,
-          );
+      final id = await _kooza.collection('products').add(state.product.toMap());
       emit(state.copyWith(product: state.product.copyWith(id: id)));
     } catch (e) {
       if (kDebugMode) print('Error saving products: $e');
@@ -131,7 +128,7 @@ class ProductsBloc extends Cubit<ProductsState> {
   void deleteProduct(String? id) async {
     try {
       if (id == null) return;
-      await _kooza.collection('products').doc(id).delete();
+      await _kooza.collection('products').deleteDoc(id);
     } catch (e) {
       if (kDebugMode) print('Error saving products: $e');
     }

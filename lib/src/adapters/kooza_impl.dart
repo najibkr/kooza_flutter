@@ -66,6 +66,7 @@ class KoozaImpl extends Kooza {
   Future<void> clear() async {
     try {
       await Hive.deleteBoxFromDisk(_dbName);
+      await Hive.deleteBoxFromDisk('${_dbName}single');
     } catch (e) {
       throw KoozaError(
         code: 'KOOZA_DELETE_DB',

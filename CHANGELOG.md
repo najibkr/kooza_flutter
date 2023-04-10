@@ -1,3 +1,7 @@
+## 1.1.0
+- Added More functionalities
+- Fixed Bugs
+
 ## 1.0.3
 - Fixed Bugs
 

@@ -120,6 +120,18 @@ class KoozaCollectionReference<T extends Object?> {
     }
   }
 
+  Future<bool> exists() async {
+    try {
+      final box = await _getCurrentBox();
+      return box.containsKey(_collectionName);
+    } catch (e) {
+      throw const KoozaError(
+        code: 'KOOZA_COLLECTION_EXISTS',
+        message: 'Could not determine if the collection exists in Kooza',
+      );
+    }
+  }
+
   Future<void> delete() async {
     try {
       final newBox = await _getCurrentBox();

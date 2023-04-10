@@ -109,14 +109,14 @@ class KoozaSingleDocumentReference {
 
   Future<bool> exists() async {
     try {
-      await _getCurrentBox();
-      return _docs.value.containsKey(_documentId);
+      final docExists = await Hive.boxExists(_documentId);
+      return docExists;
     } on KoozaError {
       rethrow;
     } catch (e) {
-      throw const KoozaError(
+      throw KoozaError(
         code: 'KOOZA_DOCUMENT_EXITS',
-        message: 'The document could not be checked in Kooza',
+        message: 'Failed to determine if $_documentId exists in Kooza',
       );
     }
   }

@@ -107,6 +107,20 @@ class KoozaSingleDocumentReference {
     }
   }
 
+  Future<bool> exists() async {
+    try {
+      await _getCurrentBox();
+      return _docs.value.containsKey(_documentId);
+    } on KoozaError {
+      rethrow;
+    } catch (e) {
+      throw const KoozaError(
+        code: 'KOOZA_DOCUMENT_EXITS',
+        message: 'The document could not be checked in Kooza',
+      );
+    }
+  }
+
   Future<void> delete() async {
     try {
       final newBox = await _getCurrentBox();

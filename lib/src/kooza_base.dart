@@ -150,6 +150,11 @@ abstract class Kooza {
   // ]);
   // Future<void> deleteKey(String key);
 
+  /// Clears The Database
+  Future<void> clear();
+
+  Future<void> clearAllInstances();
+
   /// Closes all the open files and also the stream controller.
   /// This must be called when Kooza is no longer used by the app.
   /// The best ways to close Kooza are:

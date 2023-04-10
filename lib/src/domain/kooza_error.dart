@@ -33,6 +33,6 @@ class KoozaError implements Exception {
 
   @override
   String toString() {
-    return 'Code: $code\nMessage: $message';
+    return '\nCode: $code\nMessage: $message';
   }
 }

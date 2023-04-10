@@ -136,7 +136,9 @@ class ProductsBloc extends Cubit<ProductsState> {
 
   void deleteAll() async {
     try {
-      await _kooza.collection('products').delete();
+      // await _kooza.collection('products').delete();
+      await _kooza.clear();
+      await _kooza.clearAllInstances();
     } catch (e) {
       if (kDebugMode) print('Error saving products: $e');
     }

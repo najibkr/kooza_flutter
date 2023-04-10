@@ -143,8 +143,10 @@ class KoozaCollectionReference<T extends Object?> {
       collection = collection.delete(docId);
       data[_collectionName] = collection;
       _collections.sink.add(data);
-      await newBox.put(_collectionName,
-          data.map((key, value) => MapEntry(key, value.toMap())));
+      var toCache = data.map((key, value) => MapEntry(key, value.toMap()));
+
+      if (toCache.isEmpty) return await newBox.put(_collectionName, null);
+      await newBox.put(_collectionName, toCache);
     } catch (e) {
       throw const KoozaError(
         code: 'KOOZA_DELETE_COLLECTION_Doc',
@@ -199,7 +201,7 @@ class KoozaCollectionReference<T extends Object?> {
 
   void _sinkCachedData(Box box) {
     try {
-      var collections = Map<String, KoozaCollection<T>>.from({});
+      var collections = <String, KoozaCollection<T>>{};
       for (var key in box.keys) {
         final collectionRaw = box.get(key);
         if (collectionRaw == null) return;

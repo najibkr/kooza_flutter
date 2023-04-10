@@ -1,5 +1,5 @@
 ## About Kooza
-A blazingly fast, reactive, fully asynchronous local database for dart projects.
+A blazingly fast, reactive, fully asynchronous, encrypted by default and easy to sue local database for flutter projects.
 ------------------------------------------------------------------------
 ![Kooza](https://github.com/najibkr/kooza_flutter/blob/stable/kooza.jpg)  
 ## Getting Started

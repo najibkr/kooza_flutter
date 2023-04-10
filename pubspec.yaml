@@ -1,6 +1,6 @@
 name: kooza_flutter
 description: A blazingly fast, reactive, fully asynchronous and easy to use local database for flutter
-version: 1.0.2
+version: 1.0.3
 homepage: "https://github.com/najibkr/kooza_flutter"
 repository: "https://github.com/najibkr/kooza_flutter"
 issue_tracker: "https://github.com/najibkr/kooza_flutter/issues"

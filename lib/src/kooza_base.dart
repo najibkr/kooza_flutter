@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:hive_flutter/hive_flutter.dart';
 
-import 'adapters/kooza_collection_reference.dart';
+import 'adapters/kooza_collection_reference_dep.dart';
 import 'adapters/kooza_impl.dart';
 import 'adapters/kooza_single_document_reference.dart';
 

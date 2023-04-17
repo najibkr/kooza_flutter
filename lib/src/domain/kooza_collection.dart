@@ -1,79 +1,49 @@
 import 'kooza_document.dart';
 
 class KoozaCollection<T extends Object?> {
+  final KoozaQuery<Map<String, dynamic>> _query;
   final Map<String, KoozaDocument<T>> docs;
-  const KoozaCollection({required this.docs});
-  const KoozaCollection.init({this.docs = const {}});
 
-  KoozaDocument<T> doc(String id) {
-    return docs[id] ?? KoozaDocument<T>.init();
-  }
+  /// In `docs`, `key` is the collection name and `value` is the document
+  const KoozaCollection({
+    required this.docs,
+    // required Map<String, KoozaDocument<T>> docs,
+    required KoozaQuery<Map<String, dynamic>> query,
+  }) : // _docs = docs,
+        _query = query;
 
-  List<KoozaDocument<T>> snapshots() {
-    return docs.values.toList();
-  }
-
-  KoozaCollection<T> add(String id, T data, {Duration? ttl}) {
-    var newDocs = Map<String, KoozaDocument<T>>.from(docs);
-    var newDoc = KoozaDocument<T>.init(
-      id: id,
-      data: data,
-      creationDate: DateTime.now(),
-      ttl: ttl,
-    );
-    newDocs[id] = newDoc;
-    return copyWith(docs: newDocs);
-  }
-
-  KoozaCollection<T> update(String documentId, T data) {
-    var newDocs = Map<String, KoozaDocument<T>>.from(docs);
-    var document = newDocs[documentId];
-    if (document == null) return copyWith();
-    var newDoc = KoozaDocument<T>.init(
-      id: document.id,
-      data: data,
-      creationDate: document.creationDate,
-      ttl: document.ttl,
-    );
-    newDocs[documentId] = newDoc;
-    return copyWith(docs: newDocs);
-  }
-
-  KoozaCollection<T> delete(String documentId) {
-    var newDocs = Map<String, KoozaDocument<T>>.from(docs);
-    newDocs.removeWhere((key, value) => key == documentId);
-    return copyWith(docs: newDocs);
-  }
-
-  KoozaCollection<T> copyWith({
-    Map<String, KoozaDocument<T>>? docs,
-  }) {
+  factory KoozaCollection.init() {
     return KoozaCollection<T>(
-      docs: docs ?? this.docs,
+      docs: <String, KoozaDocument<T>>{},
+      query: const KoozaQuery<Map<String, dynamic>>({}),
     );
+  }
+
+  KoozaQuery<Map<String, dynamic>> where(String fieldName, bool isEqualTo, String value) {
+    var query = Map<String, dynamic>.from(_query.query);
+    query[fieldName] = value;
+    return _query.copyWith(query);
   }
 
   factory KoozaCollection.fromMap(dynamic map) {
-    if (map == null) return const KoozaCollection(docs: {});
-    return KoozaCollection(
-      docs: _toDocs(map),
+    if (map == null) return KoozaCollection<T>.init();
+    var raw = Map<String, dynamic>.from(map);
+    return KoozaCollection<T>(
+      query: const KoozaQuery<Map<String, dynamic>>({}),
+      docs: raw.map((k, v) => MapEntry(k, KoozaDocument<T>.fromMap(v))),
     );
   }
 
   Map<String, dynamic> toMap() {
     return docs.map((key, value) => MapEntry(key, value.toMap()));
   }
+}
 
-  static Map<String, KoozaDocument<T>> _toDocs<T extends Object?>(
-      dynamic data) {
-    if (data == null) return <String, KoozaDocument<T>>{};
-    final collection = Map<String, dynamic>.from(data);
-    return collection.map((k, v) {
-      if (v == null) return MapEntry(k, KoozaDocument<T>.fromMap(null));
-      return MapEntry(
-        k,
-        KoozaDocument<T>.fromMap(Map<String, dynamic>.from(v)),
-      );
-    });
+class KoozaQuery<T extends Object?> {
+  final T query;
+  const KoozaQuery(this.query);
+
+  KoozaQuery<T> copyWith(T? query) {
+    return KoozaQuery<T>(query ?? this.query);
   }
 }

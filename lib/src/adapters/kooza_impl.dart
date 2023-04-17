@@ -5,22 +5,21 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:rxdart/rxdart.dart';
 
 import '../kooza_base.dart';
-import 'kooza_collection_reference.dart';
+import 'kooza_collection_reference_dep.dart';
 import 'kooza_single_document_reference.dart';
 
 class KoozaImpl extends Kooza {
   final Random _random;
   final String _dbName;
-  final BehaviorSubject<Map<String, Map<String, dynamic>>> _reference;
-  KoozaSingleDocumentReference? _singeDocRef;
+  final BehaviorSubject<Map<String, Map<String, dynamic>>> reference;
+  // KoozaSingleDocumentReference? _singeDocRef;
   KoozaCollectionReference<Map<String, dynamic>>? _collectionRef;
 
   KoozaImpl._({
-    required BehaviorSubject<Map<String, Map<String, dynamic>>> reference,
+    required this.reference,
     required Random random,
     required String dbName,
-  })  : _reference = reference,
-        _random = random,
+  })  : _random = random,
         _dbName = dbName;
 
   factory KoozaImpl.init(String dbName) {
@@ -31,9 +30,7 @@ class KoozaImpl extends Kooza {
 
   @override
   KoozaSingleDocumentReference singleDoc(String key) {
-    _singeDocRef ??= KoozaSingleDocumentReference.init(_dbName, key);
-    _singeDocRef = _singeDocRef!.copyWith(documentName: key);
-    return _singeDocRef!;
+    return KoozaSingleDocumentReference(dbName: _dbName, documentName: key);
   }
 
   @override
@@ -55,7 +52,7 @@ class KoozaImpl extends Kooza {
   @override
   Future<void> close() async {
     try {
-      await _singeDocRef?.close();
+      // await _singeDocRef?.close();
       await _collectionRef?.close();
     } catch (e) {
       if (kDebugMode) print('Closing Kooza Error: $e');

@@ -149,7 +149,6 @@ class ProductsBloc extends Cubit<ProductsState> {
     _darkmodeSub =
         _kooza.singleDoc('appThemeData').snapshots<bool>().listen((event) {
       emit(state.copyWith(isDarkMode: event.data));
-      print(event.data);
     });
   }
 

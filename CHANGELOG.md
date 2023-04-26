@@ -1,3 +1,6 @@
+## 2.0.1
+- Fixed Bugs 
+
 ## 2.0.0
 - Fixed Bugs
 - Added More Features

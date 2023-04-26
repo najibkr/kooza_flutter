@@ -19,8 +19,8 @@ class KoozaCollectionReference<T extends Object?> {
     required Random random,
   }) : _random = random;
 
-  KoozaDocumentReference doc(String documentId) {
-    return KoozaDocumentReference(
+  KoozaDocumentReference<T> doc(String documentId) {
+    return KoozaDocumentReference<T>(
       boxName: boxName,
       collectionName: collectionName,
       documentId: documentId,

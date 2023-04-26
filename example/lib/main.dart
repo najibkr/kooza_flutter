@@ -93,8 +93,7 @@ class ProductsBloc extends Cubit<ProductsState> {
   StreamSubscription<List<Product>>? _producstsSub;
   void streamProducts() {
     final ref = _kooza.collection('my_products').snapshots();
-    final productsStream = ref.map((collection) => collection
-        .docs()
+    final productsStream = ref.map((collection) => collection.docs
         .map((doc) => Product.fromMap(doc.data, doc.id))
         .toList());
     _producstsSub?.cancel();
@@ -109,7 +108,7 @@ class ProductsBloc extends Cubit<ProductsState> {
       await _producstsSub?.cancel();
       final ref = await _kooza.collection('my_products').get();
       final result =
-          ref.docs().map((doc) => Product.fromMap(doc.data, doc.id)).toList();
+          ref.docs.map((doc) => Product.fromMap(doc.data, doc.id)).toList();
       emit(state.copyWith(products: result));
     } catch (e) {
       if (kDebugMode) print('Error fetching products: $e');

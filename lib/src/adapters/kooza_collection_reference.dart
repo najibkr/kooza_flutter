@@ -1,192 +1,166 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:hive/hive.dart';
+import 'package:rxdart/rxdart.dart';
+
+import '../domain/kooza_document.dart';
+import '../domain/kooza_query_snapshot.dart';
 import 'kooza_document_reference.dart';
 
 class KoozaCollectionReference<T extends Object?> {
-  final String dbName;
+  final String boxName;
   final String collectionName;
   final Random _random;
 
   const KoozaCollectionReference({
-    required this.dbName,
+    required this.boxName,
     required this.collectionName,
     required Random random,
   }) : _random = random;
 
-  KoozaDocumentReference<T> doc(String documentId) {
+  KoozaDocumentReference doc(String documentId) {
     return KoozaDocumentReference(
-      dbName: dbName,
+      boxName: boxName,
       collectionName: collectionName,
       documentId: documentId,
     );
   }
 
-  // Stream<KoozaCollection<T>> snapshots() async* {
-  //   try {
-  //     await _getCurrentBox();
-  //     yield* _collections.stream.map((event) {
-  //       final data = event[_collectionName];
-  //       return data ?? const KoozaCollection.init();
-  //     }).handleError(
-  //       (e) => throw const KoozaError(
-  //         code: 'KOOZA_STREAM_COLLECTION',
-  //         message: 'The collection could not be streamed from Kooza',
-  //       ),
-  //     );
-  //   } catch (e) {
-  //     throw const KoozaError(
-  //       code: 'KOOZA_STREAM_COLLECTION',
-  //       message: 'The collection could not be streamed from Kooza',
-  //     );
-  //   }
-  // }
+  /// Checks if the collection exists.
+  /// If the collection is empty, the returned value is `false`
+  bool existsSync() {
+    try {
+      final box = Hive.box(boxName);
 
-  // Future<KoozaCollection<T>> get() async {
-  //   try {
-  //     await _getCurrentBox();
-  //     final collection = _collections.value[_collectionName];
-  //     return collection ?? const KoozaCollection.init();
-  //   } catch (e) {
-  //     throw const KoozaError(
-  //       code: 'KOOZA_GET_COLLECTION',
-  //       message: 'The collection could not be fetched from Kooza',
-  //     );
-  //   }
-  // }
+      // Check if it exists at all
+      final collectionExists = box.containsKey(collectionName);
+      if (!collectionExists) return false;
 
-  // Future<String> add(T data, {String? docID, Duration? ttl}) async {
-  //   try {
-  //     final newId = docID ?? _generateId();
-  //     var collections = Map<String, KoozaCollection<T>>.from(_collections.value);
-  //     var collection = collections[_collectionName] ?? KoozaCollection<T>.init();
-  //     collection = collection.add(newId, data, ttl: ttl);
-  //     collections[_collectionName] = collection;
-  //     _collections.sink.add(collections);
-  //     final box = await _getCurrentBox();
-  //     await box.put(_collectionName, collection.toMap());
-  //     return newId;
-  //   } catch (e) {
-  //     throw const KoozaError(
-  //       code: 'KOOZA_ADD_TO_COLLECTION',
-  //       message: 'Could not add the new document to Kooza collection',
-  //     );
-  //   }
-  // }
+      final data = box.get(collectionName);
+      final newCollection = KoozaQuerySnapshot<T>.fromMap(data);
+      if (newCollection.isEmpty()) return false;
 
-  // Future<bool> exists() async {
-  //   try {
-  //     final box = await _getCurrentBox();
-  //     return box.containsKey(_collectionName);
-  //   } catch (e) {
-  //     throw const KoozaError(
-  //       code: 'KOOZA_COLLECTION_EXISTS',
-  //       message: 'Could not determine if the collection exists in Kooza',
-  //     );
-  //   }
-  // }
+      return true;
+    } catch (e) {
+      if (kDebugMode) print('KOOZA_COLLECTION_EXITS_SYNC: $e');
+      return false;
+    }
+  }
 
-  // Future<void> delete() async {
-  //   try {
-  //     final newBox = await _getCurrentBox();
-  //     var data = Map<String, KoozaCollection<T>>.from(_collections.value);
-  //     data.removeWhere((key, value) => key == _collectionName);
-  //     _collections.sink.add(data);
-  //     await newBox.delete(_collectionName);
-  //   } catch (e) {
-  //     throw const KoozaError(
-  //       code: 'KOOZA_DELETE_COLLECTION',
-  //       message: 'The collection could not be deleted from Kooza',
-  //     );
-  //   }
-  // }
+  /// Checks if the collection exists.
+  /// If the collection is empty, the returned value is `false`
+  bool exists() {
+    try {
+      final box = Hive.box(boxName);
 
-  // Future<void> deleteDoc(String docId) async {
-  //   try {
-  //     final newBox = await _getCurrentBox();
-  //     var data = Map<String, KoozaCollection<T>>.from(_collections.value);
-  //     var collection = data[_collectionName] ?? KoozaCollection<T>.init();
-  //     collection = collection.delete(docId);
-  //     data[_collectionName] = collection;
-  //     _collections.sink.add(data);
-  //     var toCache = data.map((key, value) => MapEntry(key, value.toMap()));
+      // Check if it exists at all
+      final collectionExists = box.containsKey(collectionName);
+      if (!collectionExists) return false;
 
-  //     if (toCache.isEmpty) return await newBox.put(_collectionName, null);
-  //     await newBox.put(_collectionName, toCache);
-  //   } catch (e) {
-  //     throw const KoozaError(
-  //       code: 'KOOZA_DELETE_COLLECTION_Doc',
-  //       message: 'The collection document could not be deleted from Kooza',
-  //     );
-  //   }
-  // }
+      final data = box.get(collectionName);
+      final newCollection = KoozaQuerySnapshot<T>.fromMap(data);
+      if (newCollection.isEmpty()) return false;
 
-  // Future<void> updateDoc(String docId, T updated) async {
-  //   try {
-  //     final newBox = await _getCurrentBox();
-  //     var data = Map<String, KoozaCollection<T>>.from(_collections.value);
-  //     var collection = data[_collectionName] ?? KoozaCollection<T>.init();
-  //     collection = collection.update(docId, updated);
-  //     data[_collectionName] = collection;
-  //     _collections.sink.add(data);
-  //     await newBox.put(_collectionName, data.map((key, value) => MapEntry(key, value.toMap())));
-  //   } catch (e) {
-  //     throw const KoozaError(
-  //       code: 'KOOZA_DELETE_COLLECTION_Doc',
-  //       message: 'The collection document could not be deleted from Kooza',
-  //     );
-  //   }
-  // }
+      return true;
+    } catch (e) {
+      if (kDebugMode) print('KOOZA_COLLECTION_EXITS: $e');
+      return false;
+    }
+  }
 
-  // Future<Box> _getCurrentBox() async {
-  //   try {
-  //     final boxExists = await Hive.boxExists(_dbName);
-  //     if (!boxExists) {
-  //       final lazyBox = await Hive.openBox(_dbName);
-  //       return lazyBox;
-  //     } else if (!Hive.isBoxOpen(_dbName)) {
-  //       final newBox = await Hive.openBox(_dbName);
-  //       _sinkCachedData(newBox);
-  //       return newBox;
-  //     } else {
-  //       final box = Hive.box(_dbName);
-  //       if (_collections.value.isEmpty) _sinkCachedData(box);
-  //       return box;
-  //     }
-  //   } on KoozaError {
-  //     rethrow;
-  //   } catch (e) {
-  //     if (kDebugMode) print('KOOZA_GET_CURRENT_BOX: $e');
-  //     throw const KoozaError(
-  //       code: 'KOOZA_GET_CURRENT_BOX',
-  //       message: 'Could not initialize a new Kooza database instance',
-  //     );
-  //   }
-  // }
+  /// Adds a new document to the collection
+  /// and gives a random ID if `docId` is not provided
+  Future<String?> add(
+    T data, {
+    String? docId,
+    Duration ttl = const Duration(hours: 2),
+  }) async {
+    try {
+      final newId = docId ?? _generateId();
+      final box = Hive.box(boxName);
 
-  // void _sinkCachedData(Box box) {
-  //   try {
-  //     var collections = <String, KoozaCollection<T>>{};
-  //     for (var key in box.keys) {
-  //       final collectionRaw = box.get(key);
-  //       if (collectionRaw == null) return;
-  //       collections[key] = KoozaCollection<T>.fromMap(collectionRaw);
-  //     }
-  //     _collections.sink.add(collections);
-  //   } catch (e) {
-  //     if (kDebugMode) print('_sinkCachedData: $e');
-  //     throw const KoozaError(
-  //       code: 'KOOZA_SINK_CACHED_COLLECTION',
-  //       message: 'Kooza could not read collections from your device disk',
-  //     );
-  //   }
-  // }
+      var newDocument = KoozaDocument<T>.init(
+        id: newId,
+        data: data,
+        ttl: ttl,
+        creationDate: DateTime.now(),
+      );
 
-  // String _generateId() {
-  //   final id = _random.nextInt(100000000);
-  //   return 'KOOZA${id + 100000000}';
-  // }
+      if (exists()) {
+        final rawData = box.get(collectionName);
+        var newCollection = KoozaQuerySnapshot<T>.fromMap(rawData);
+        newCollection = newCollection.add(newId, newDocument);
+        await box.put(collectionName, newCollection.toMap());
+        return newId;
+      }
 
-  // Future<void> close() async {
-  //   await _docRef?.close();
-  // }
+      var newCollection = KoozaQuerySnapshot<T>.init();
+      newCollection = newCollection.add(newId, newDocument);
+      await box.put(collectionName, newCollection.toMap());
+
+      return newId;
+    } catch (e) {
+      if (kDebugMode) print('KOOZA_SET_DOCUMENT: $e');
+      return null;
+    }
+  }
+
+  Future<KoozaQuerySnapshot<T>> get() async {
+    try {
+      final box = Hive.box(boxName);
+      final rawCollection = box.get(collectionName);
+      return KoozaQuerySnapshot<T>.fromMap(rawCollection);
+    } catch (e) {
+      if (kDebugMode) print('KOOZA_GET_COLLECTION: $e');
+      return KoozaQuerySnapshot<T>.init();
+    }
+  }
+
+  /// Streams the collection by returning a [KoozaQuerySnapshot]
+  Stream<KoozaQuerySnapshot<T>> snapshots() {
+    try {
+      final box = Hive.box(boxName);
+
+      final rawCollection = box.get(collectionName);
+      var newCollection = KoozaQuerySnapshot<T>.fromMap(rawCollection);
+
+      return box
+          .watch(key: collectionName)
+          .map((e) => KoozaQuerySnapshot<T>.fromMap(e.value))
+          .startWith(newCollection)
+          .handleError((e) {
+        if (kDebugMode) print("KOOZA_STREAM_DOCUMENT: $e");
+      });
+    } catch (e) {
+      if (kDebugMode) print('KOOZA_STREAM_COLLECTION: $e');
+      return Stream.value(KoozaQuerySnapshot<T>.init()).asBroadcastStream();
+    }
+  }
+
+  Future<void> delete() async {
+    try {
+      final collectionExists = exists();
+      if (!collectionExists) return;
+
+      final box = Hive.box(boxName);
+      await box.delete(collectionName);
+    } catch (e) {
+      if (kDebugMode) print('KOOZA_DELETE_COLLECTION: $e');
+    }
+  }
+
+  Future<void> close() async {
+    try {
+      final box = Hive.box(boxName);
+      await box.close();
+    } catch (e) {
+      if (kDebugMode) print("KOOZA_CLOSE_COLLECTION: $e");
+    }
+  }
+
+  String _generateId() {
+    final id = _random.nextInt(100000000);
+    return 'KOOZA${id + 100000000}';
+  }
 }

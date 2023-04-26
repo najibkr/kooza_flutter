@@ -1,3 +1,8 @@
+## 2.0.0
+- Fixed Bugs
+- Added More Features
+- Changed Internal Implementations
+
 ## 1.2.0
 - Added addAll Method to collection reference
 

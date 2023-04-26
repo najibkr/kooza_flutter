@@ -1,86 +1,108 @@
-import 'dart:math' show Random;
+import 'dart:math';
 
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:rxdart/rxdart.dart';
 
 import '../kooza_base.dart';
-import 'kooza_collection_reference_dep.dart';
+import 'kooza_collection_reference.dart';
 import 'kooza_single_document_reference.dart';
 
 class KoozaImpl extends Kooza {
+  final String _singleDocsBoxName;
+  final String _collectionsBoxName;
   final Random _random;
-  final String _dbName;
-  final BehaviorSubject<Map<String, Map<String, dynamic>>> reference;
-  // KoozaSingleDocumentReference? _singeDocRef;
-  KoozaCollectionReference<Map<String, dynamic>>? _collectionRef;
-
-  KoozaImpl._({
-    required this.reference,
+  const KoozaImpl._({
+    required String singleDocsBoxName,
+    required String collectionsBoxName,
     required Random random,
-    required String dbName,
-  })  : _random = random,
-        _dbName = dbName;
+  })  : _singleDocsBoxName = singleDocsBoxName,
+        _collectionsBoxName = collectionsBoxName,
+        _random = random;
 
-  factory KoozaImpl.init(String dbName) {
-    final random = Random(DateTime.now().microsecond);
-    final ref = BehaviorSubject<Map<String, Map<String, dynamic>>>.seeded({});
-    return KoozaImpl._(random: random, dbName: dbName, reference: ref);
+  static KoozaImpl? _uniqueInstance;
+
+  static Future<KoozaImpl> getInstance(String dbName, Random random) async {
+    final singleDocsBoxName = '${dbName}_single_docs';
+    final collectionsBoxName = '${dbName}_collections';
+
+    try {
+      await Hive.initFlutter('kooza');
+
+      await Hive.openBox(singleDocsBoxName);
+
+      await Hive.openBox(collectionsBoxName);
+
+      _uniqueInstance ??= KoozaImpl._(
+        singleDocsBoxName: singleDocsBoxName,
+        collectionsBoxName: collectionsBoxName,
+        random: random,
+      );
+      return _uniqueInstance!;
+    } catch (e) {
+      if (kDebugMode) print("KOOZA_GET_UNIQUE_INSTANCE: $e");
+
+      _uniqueInstance ??= KoozaImpl._(
+        singleDocsBoxName: singleDocsBoxName,
+        collectionsBoxName: collectionsBoxName,
+        random: random,
+      );
+      return _uniqueInstance!;
+    }
   }
 
   @override
-  KoozaSingleDocumentReference singleDoc(String key) {
-    return KoozaSingleDocumentReference(dbName: _dbName, documentName: key);
+  KoozaSingleDocumentReference singleDoc(String documentName) {
+    return KoozaSingleDocumentReference(
+      boxName: _singleDocsBoxName,
+      documentName: documentName,
+    );
   }
 
   @override
   KoozaCollectionReference<Map<String, dynamic>> collection(
     String collectionName,
   ) {
-    _collectionRef ??= KoozaCollectionReference<Map<String, dynamic>>.init(
-      random: _random,
-      dbName: _dbName,
+    return KoozaCollectionReference<Map<String, dynamic>>(
+      boxName: _collectionsBoxName,
       collectionName: collectionName,
-    );
-    _collectionRef = _collectionRef!.copyWith(
       random: _random,
-      collectionName: collectionName,
     );
-    return _collectionRef!;
   }
 
+  /// Closes the Kooza's openned collections and single documents
+  /// This helps free up memory when Kooza is not in use.
   @override
   Future<void> close() async {
     try {
-      // await _singeDocRef?.close();
-      await _collectionRef?.close();
+      await Hive.close();
     } catch (e) {
-      if (kDebugMode) print('Closing Kooza Error: $e');
+      if (kDebugMode) print('KOOZA_CLOSE_DB: $e');
     }
   }
 
   @override
   Future<void> clear() async {
     try {
-      await Hive.deleteBoxFromDisk(_dbName);
-      await Hive.deleteBoxFromDisk('${_dbName}single');
+      final singleDocsBox = Hive.box(_singleDocsBoxName);
+      await singleDocsBox.clear();
+
+      final collectionsBox = Hive.box(_collectionsBoxName);
+      await collectionsBox.clear();
     } catch (e) {
-      throw KoozaError(
-        code: 'KOOZA_DELETE_DB',
-        message: 'could not create $_dbName from Kooza',
-      );
+      if (kDebugMode) print('KOOZA_CLEAR_BOXES: $e');
     }
   }
 
   @override
-  Future<void> clearAllInstances() async {
+  Future<void> clearAll() async {
     try {
-      await Hive.deleteFromDisk();
+      final singleDocsBox = Hive.box(_singleDocsBoxName);
+      await singleDocsBox.clear();
+
+      final collectionsBox = Hive.box(_collectionsBoxName);
+      await collectionsBox.clear();
     } catch (e) {
-      throw const KoozaError(
-        code: 'KOOZA_DELETE_ALL_DB',
-        message: 'could not delete all the dbs from Kooza',
-      );
+      if (kDebugMode) print('KOOZA_CLEAR_ALL_BOXES: $e');
     }
   }
 }

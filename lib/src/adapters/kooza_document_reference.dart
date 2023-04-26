@@ -1,18 +1,93 @@
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:rxdart/rxdart.dart';
 
 import '../domain/kooza_document.dart';
+import '../domain/kooza_query_snapshot.dart';
 
 class KoozaDocumentReference<T extends Object?> {
-  final String dbName;
+  final String boxName;
   final String collectionName;
   final String documentId;
 
   KoozaDocumentReference({
-    required this.dbName,
+    required this.boxName,
     required this.collectionName,
     required this.documentId,
   });
+
+  /// Checks if the document exists.
+  /// It does not delete the expired documents from Kooza.
+  bool existsSync() {
+    try {
+      final box = Hive.box(boxName);
+
+      // Check if it exists at all
+      final collectionExists = box.containsKey(collectionName);
+      if (!collectionExists) return false;
+
+      final data = box.get(collectionName);
+      final newCollection = KoozaQuerySnapshot<T>.fromMap(data);
+      if (!newCollection.docExists(documentId)) return false;
+
+      final doc = newCollection.getDoc(documentId);
+      // if there is no data in the document, then it does not exist.
+      if (doc.data == null) return false;
+
+      // if the data in the the document exists but there is no
+      // expiration then it exists
+      if (doc.ttl == null) return true;
+
+      // Check if the document is expired
+      final storedDuration = DateTime.now().difference(doc.creationDate);
+      if (storedDuration.inMilliseconds >= doc.ttl!.inMilliseconds) {
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      if (kDebugMode) print('KOOZA_DOCUMENT_EXITS_SYNC: $e');
+      return false;
+    }
+  }
+
+  /// Checks if the document of type `T` exists in Kooza.
+  /// If the document exists and is expired,
+  /// it asynchronouly deletes it.
+  Future<bool> exists() async {
+    try {
+      final box = Hive.box(boxName);
+
+      // Check if it exists at all
+      final collectionExists = box.containsKey(collectionName);
+      if (!collectionExists) return false;
+
+      final data = box.get(collectionName);
+      var newCollection = KoozaQuerySnapshot<T>.fromMap(data);
+      if (!newCollection.docExists(documentId)) return false;
+
+      final doc = newCollection.getDoc(documentId);
+      // if there is no data in the document, then it does not exist.
+      if (doc.data == null) return false;
+
+      // if the data in the the document exists but there is no
+      // expiration then it exists
+      if (doc.ttl == null) return true;
+
+      // Check if the document is expired
+      final storedDuration = DateTime.now().difference(doc.creationDate);
+      if (storedDuration.inMilliseconds >= doc.ttl!.inMilliseconds) {
+        newCollection = newCollection.delete(documentId);
+        await box.put(collectionName, newCollection.toMap());
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      if (kDebugMode) print('KOOZA_DOCUMENT_EXITS_SYNC: $e');
+      return false;
+    }
+  }
 
   /// Saves the `data` with the type T in Kooza at
   /// the given collection path and document id.
@@ -21,172 +96,85 @@ class KoozaDocumentReference<T extends Object?> {
   /// stored in Kooza. By default `ttl` is set to 2 hours.
   Future<void> set(T data, {Duration ttl = const Duration(hours: 2)}) async {
     try {
-      final _ = await Hive.openLazyBox(dbName);
-      var __ = KoozaDocument<T>.init(
+      final box = Hive.box(boxName);
+
+      var newDoc = KoozaDocument<T>.init(
         id: documentId,
         data: data,
         ttl: ttl,
         creationDate: DateTime.now(),
       );
 
-      // var colletion = Map<String, KoozaDocument<T>>.from(_docs.value);
-      // colletion[_documentId] = newDocument;
-      // _docs.sink.add(colletion);
+      if (!existsSync()) {
+        var newCollection = KoozaQuerySnapshot.init();
+        newCollection = newCollection.add(documentId, newDoc);
+        await box.put(collectionName, newCollection.toMap());
+        return;
+      }
 
-      // var collectionMap = colletion.map((k, v) => MapEntry(k, v.toMap()));
-      // await newBox.put(_collectionName, collectionMap);
+      final rawCollection = box.get(collectionName);
+      var fetchedCollection = KoozaQuerySnapshot<T>.fromMap(rawCollection);
+      fetchedCollection = fetchedCollection.add(documentId, newDoc);
+      await box.put(collectionName, fetchedCollection.toMap());
     } catch (e) {
       if (kDebugMode) print('KOOZA_SET_DOCUMENT: $e');
     }
   }
 
-  // /// Asynchronously gets the document
-  // Future<KoozaDocument<T>> get() async {
-  //   try {
-  //     final newBox = await _getCurrentBox();
-  //     var doc = KoozaDocument<T>.fromDynamicData(_docs.value[_documentId]);
-  //     doc = await _removeExpiredDoc(newBox, doc);
-  //     return doc;
-  //   } on KoozaError {
-  //     rethrow;
-  //   } catch (e) {
-  //     throw KoozaError(
-  //       code: 'KOOZA_GET_DOCUMENT',
-  //       message: 'Kooza failed to get the document named $_documentId',
-  //     );
-  //   }
-  // }
+  /// Asynchronously gets the document
+  Future<KoozaDocument<T>> get() async {
+    try {
+      final docExists = await exists();
+      if (!docExists) return KoozaDocument<T>.init();
 
-  // /// Broadcasts a stream of data.
-  // Stream<KoozaDocument<T>> snapshots() async* {
-  //   try {
-  //     final newBox = await _getCurrentBox();
+      final box = Hive.box(boxName);
+      final rawCollection = box.get(collectionName);
+      var newCollection = KoozaQuerySnapshot<T>.fromMap(rawCollection);
 
-  //     var doc = KoozaDocument<T>.fromDynamicData(_docs.value[_documentId]);
-  //     await _removeExpiredDoc(newBox, doc);
+      return newCollection.getDoc(documentId);
+    } catch (e) {
+      if (kDebugMode) print('KOOZA_GET_DOCUMENT: $e');
+      return KoozaDocument<T>.init();
+    }
+  }
 
-  //     yield* _docs.stream.map((event) {
-  //       return KoozaDocument<T>.fromDynamicData(event[_documentId]);
-  //     });
-  //   } on KoozaError {
-  //     rethrow;
-  //   } catch (e) {
-  //     if (kDebugMode) print("KOOZA_GET_SINGLE_DOCUMENT: $_documentId $e");
-  //     throw KoozaError(
-  //       code: 'KOOZA_STREAM_DOCUMENT',
-  //       message: 'Kooza failed to get the document named $_documentId',
-  //     );
-  //   }
-  // }
+  /// Broadcasts a stream of data.
+  Stream<KoozaDocument<T>> snapshots() async* {
+    try {
+      final docExists = await exists();
+      if (docExists) {
+        final box = Hive.box(boxName);
 
-  // Future<void> delete() async {
-  //   try {
-  //     final b = await _getCurrentBox();
-  //     var docs = Map<String, KoozaDocument<T>>.from(_docs.value);
-  //     docs.removeWhere((key, value) => key == _documentId);
-  //     _docs.sink.add(docs);
-  //     await b.put(_collectionName, docs.map((k, v) => MapEntry(k, v.toMap())));
-  //   } on KoozaError {
-  //     rethrow;
-  //   } catch (e) {
-  //     throw const KoozaError(
-  //       code: 'KOOZA_DELETE_DOCUMENT',
-  //       message: 'The document could not be deleted from Kooza',
-  //     );
-  //   }
-  // }
+        final rawCollection = box.get(collectionName);
+        var newCollection = KoozaQuerySnapshot<T>.fromMap(rawCollection);
+        yield* box
+            .watch(key: collectionName)
+            .map((e) => KoozaQuerySnapshot<T>.fromMap(e.value))
+            .startWith(newCollection)
+            .map((e) => e.getDoc(documentId))
+            .handleError((e) {
+          if (kDebugMode) print("KOOZA_STREAM_DOCUMENT: $e");
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) print("KOOZA_STREAM_DOCUMENT: $e");
+    }
+  }
 
-  // Future<bool> exists() async {
-  //   try {
-  //     await _getCurrentBox();
-  //     var newDocuments = Map<String, KoozaDocument<T>>.from(_docs.value);
-  //     return newDocuments.containsKey(_documentId);
-  //   } on KoozaError {
-  //     rethrow;
-  //   } catch (e) {
-  //     throw const KoozaError(
-  //       code: 'KOOZA_DOCUMENT_EXITS',
-  //       message: 'The document could not be checked in Kooza',
-  //     );
-  //   }
-  // }
+  Future<void> delete() async {
+    try {
+      final docExists = await exists();
+      if (!docExists) return;
 
-  // Future<Box> _getCurrentBox() async {
-  //   try {
-  //     final boxExists = await Hive.boxExists(_dbName);
-  //     if (!boxExists) {
-  //       final lazyBox = await Hive.openBox(_dbName);
-  //       return lazyBox;
-  //     } else if (!Hive.isBoxOpen(_dbName)) {
-  //       final newBox = await Hive.openBox(_dbName);
-  //       _sinkCachedData(newBox);
-  //       return newBox;
-  //     } else {
-  //       final box = Hive.box(_dbName);
-  //       if (_docs.value.isEmpty) _sinkCachedData(box);
-  //       return box;
-  //     }
-  //   } on KoozaError {
-  //     rethrow;
-  //   } catch (e) {
-  //     if (kDebugMode) print('KOOZA_GET_CURRENT_BOX: $e');
-  //     throw const KoozaError(
-  //       code: 'KOOZA_GET_CURRENT_BOX',
-  //       message: 'Could not initialize a new Kooza database instance',
-  //     );
-  //   }
-  // }
+      final box = Hive.box(boxName);
 
-  // void _sinkCachedData(Box box) {
-  //   try {
-  //     final collectionRaw = box.get(_collectionName);
-  //     if (collectionRaw == null) return;
-  //     final collMap = Map<String, dynamic>.from(collectionRaw);
+      final data = box.get(collectionName);
+      var newCollection = KoozaQuerySnapshot<T>.fromMap(data);
+      newCollection = newCollection.delete(documentId);
 
-  //     final collection = collMap.map((k, v) {
-  //       return MapEntry(k, KoozaDocument<T>.fromMap(v));
-  //     });
-  //     _docs.sink.add(collection);
-  //   } on KoozaError {
-  //     rethrow;
-  //   } catch (e) {
-  //     if (kDebugMode) print('_sinkCachedData: $e');
-  //     throw const KoozaError(
-  //       code: 'KOOZA_SINK_CACHED_DOCUMENTS',
-  //       message: 'Kooza could not read data from your device memory',
-  //     );
-  //   }
-  // }
-
-  // Future<KoozaDocument<T>> _removeExpiredDoc(
-  //   Box box,
-  //   KoozaDocument<T> doc,
-  // ) async {
-  //   try {
-  //     if (doc.ttl == null) return doc;
-
-  //     final duration = DateTime.now().difference(doc.creationDate);
-  //     final isExpired = duration.inMilliseconds >= doc.ttl!.inMilliseconds;
-
-  //     if (isExpired) {
-  //       var collection = Map<String, KoozaDocument<T>>.from(_docs.value);
-  //       collection.removeWhere((key, value) => key == _documentId);
-  //       _docs.sink.add(collection);
-  //       await box.delete(_documentId);
-  //       return KoozaDocument<T>.init();
-  //     }
-  //     return doc;
-  //   } on KoozaError {
-  //     rethrow;
-  //   } catch (e) {
-  //     throw const KoozaError(
-  //       code: 'KOOZA_REMOVE_EXPIRED_VALUE',
-  //       message: 'could not remove expired value from Kooza',
-  //     );
-  //   }
-  // }
-
-  // Future<void> close() async {
-  //   await _docs.close();
-  // }
+      await box.put(collectionName, newCollection.toMap());
+    } catch (e) {
+      if (kDebugMode) print("KOOZA_DELETE_DOCUMENT: $e");
+    }
+  }
 }

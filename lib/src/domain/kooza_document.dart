@@ -84,7 +84,8 @@ class KoozaDocument<T extends Object?> {
 
   static T? _dataToType<T extends Object?>(dynamic data) {
     if (data == null) return null;
-    if ('${data.runtimeType}'.contains('_Map<dynamic, dynamic>') || T == Map<String, dynamic>) {
+    if ('${data.runtimeType}'.contains('_Map<dynamic, dynamic>') ||
+        T == Map<String, dynamic>) {
       return Map<String, dynamic>.from(data) as T?;
     } else if ('${data.runtimeType}'.contains('List<dynamic>')) {
       var list = List<dynamic>.from(data);

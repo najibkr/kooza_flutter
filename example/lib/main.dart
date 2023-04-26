@@ -92,9 +92,11 @@ class ProductsBloc extends Cubit<ProductsState> {
 
   StreamSubscription<List<Product>>? _producstsSub;
   void streamProducts() {
-    final ref = _kooza.collection('products').snapshots();
-    final productsStream =
-        ref.map((collection) => collection.docs.values.map((doc) => Product.fromMap(doc.data, doc.id)).toList());
+    final ref = _kooza.collection('my_products').snapshots();
+    final productsStream = ref.map((collection) => collection
+        .docs()
+        .map((doc) => Product.fromMap(doc.data, doc.id))
+        .toList());
     _producstsSub?.cancel();
     _producstsSub = productsStream.listen((products) {
       emit(state.copyWith(products: products));
@@ -105,8 +107,9 @@ class ProductsBloc extends Cubit<ProductsState> {
   void fetchProducts() async {
     try {
       await _producstsSub?.cancel();
-      final ref = await _kooza.collection('products').get();
-      final result = ref.docs.values.map((doc) => Product.fromMap(doc.data, doc.id)).toList();
+      final ref = await _kooza.collection('my_products').get();
+      final result =
+          ref.docs().map((doc) => Product.fromMap(doc.data, doc.id)).toList();
       emit(state.copyWith(products: result));
     } catch (e) {
       if (kDebugMode) print('Error fetching products: $e');
@@ -115,7 +118,8 @@ class ProductsBloc extends Cubit<ProductsState> {
 
   void saveProduct() async {
     try {
-      final id = await _kooza.collection('products').add(state.product.toMap());
+      final id =
+          await _kooza.collection('my_products').add(state.product.toMap());
       emit(state.copyWith(product: state.product.copyWith(id: id)));
     } catch (e) {
       if (kDebugMode) print('Error saving products: $e');
@@ -125,7 +129,7 @@ class ProductsBloc extends Cubit<ProductsState> {
   void deleteProduct(String? id) async {
     try {
       if (id == null) return;
-      await _kooza.collection('products').deleteDoc(id);
+      await _kooza.collection('my_products').doc(id).delete();
     } catch (e) {
       if (kDebugMode) print('Error saving products: $e');
     }
@@ -133,9 +137,7 @@ class ProductsBloc extends Cubit<ProductsState> {
 
   void deleteAll() async {
     try {
-      // await _kooza.collection('products').delete();
       await _kooza.clear();
-      await _kooza.clearAllInstances();
     } catch (e) {
       if (kDebugMode) print('Error saving products: $e');
     }
@@ -144,15 +146,18 @@ class ProductsBloc extends Cubit<ProductsState> {
   StreamSubscription? _darkmodeSub;
   void streamDarkMode() {
     _darkmodeSub?.cancel();
-    _darkmodeSub = _kooza
-        .singleDoc('isDarkMode')
-        .snapshots()
-        .listen((event) => emit(state.copyWith(isDarkMode: event.data as bool?)));
+    _darkmodeSub =
+        _kooza.singleDoc('appThemeData').snapshots<bool>().listen((event) {
+      emit(state.copyWith(isDarkMode: event.data));
+      print(event.data);
+    });
   }
 
   void setDarkMode(bool value) async {
     try {
-      await _kooza.singleDoc('isDarkMode').set(value);
+      await _kooza
+          .singleDoc('appThemeData')
+          .set<bool>(value, ttl: const Duration(milliseconds: 3000));
     } catch (e) {
       if (kDebugMode) print(e);
     }
@@ -161,30 +166,39 @@ class ProductsBloc extends Cubit<ProductsState> {
   @override
   Future<void> close() async {
     await _producstsSub?.cancel();
-    await _kooza.close();
     return super.close();
   }
 }
 
 void main() async {
-  await Kooza.ensureInitialize();
-  runApp(const AppDataProvider());
+  final kooza = await Kooza.getInstance('example');
+  runApp(AppDataProvider(kooza: kooza));
 }
 
-class AppDataProvider extends StatelessWidget {
-  const AppDataProvider({super.key});
+class AppDataProvider extends StatefulWidget {
+  final Kooza kooza;
+  const AppDataProvider({super.key, required this.kooza});
+
+  @override
+  State<AppDataProvider> createState() => _AppDataProviderState();
+}
+
+class _AppDataProviderState extends State<AppDataProvider> {
+  @override
+  void dispose() {
+    widget.kooza.close();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureProvider<int?>(
       initialData: null,
-      create: (context) => Future.delayed(const Duration(milliseconds: 5000), () => 20),
-      child: Provider(
-        create: (context) => Kooza.instance('products'),
-        dispose: (_, kooza) async => await kooza.close(),
-        child: BlocProvider(
-          create: (c) => ProductsBloc(c.read<Kooza>()),
-          child: const AppGeneralSetup(),
-        ),
+      create: (context) =>
+          Future.delayed(const Duration(milliseconds: 5000), () => 20),
+      child: BlocProvider(
+        create: (c) => ProductsBloc(widget.kooza),
+        child: const AppGeneralSetup(),
       ),
     );
   }
@@ -280,7 +294,8 @@ class ListProducts extends StatelessWidget {
         itemCount: products.length,
         itemBuilder: (context, index) => ListTile(
           leading: IconButton(
-            onPressed: () => context.read<ProductsBloc>().deleteProduct(products[index].id),
+            onPressed: () =>
+                context.read<ProductsBloc>().deleteProduct(products[index].id),
             icon: const Icon(Icons.delete),
           ),
           trailing: Text(products[index].price?.toString() ?? '0.0'),

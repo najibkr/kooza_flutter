@@ -7,33 +7,80 @@ import 'package:rxdart/rxdart.dart';
 import '../domain/kooza_document.dart';
 
 class KoozaSingleDocumentReference {
-  final String dbName;
+  final String boxName;
   final String documentName;
 
   const KoozaSingleDocumentReference({
-    required this.dbName,
+    required this.boxName,
     required this.documentName,
   });
 
-  /// Checks if the document exists in Kooza
-  Future<bool> exists<T>() async {
+  /// Checks if the document exists.
+  /// It does not delete the expired documents from Kooza.
+  bool existsSync<T extends Object?>() {
     try {
-      final box = await Hive.openLazyBox(dbName);
-      final exists = box.containsKey(documentName);
-      if (!exists) return false;
+      final box = Hive.box(boxName);
 
-      final data = await box.get(documentName);
+      // Check if it exists at all
+      final existsInTheBox = box.containsKey(documentName);
+      if (!existsInTheBox) return false;
+
+      // Check if it is supposed to expire
+      final data = box.get(documentName);
       var doc = KoozaDocument<T>.fromMap(data);
+
+      // if there is no data in the document, then it does not exist.
+      if (doc.data == null) return false;
+
+      // if the data in the the document exists but there is no
+      // expiration then it exists
       if (doc.ttl == null) return true;
 
+      // Check if the document is expired
+      final storedDuration = DateTime.now().difference(doc.creationDate);
+      if (storedDuration.inMilliseconds >= doc.ttl!.inMilliseconds) {
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      if (kDebugMode) print('KOOZA_SINGLE_DOCUMENT_EXITS_SYNC: $e');
+      return false;
+    }
+  }
+
+  /// Checks if the document of type `T` exists in Kooza.
+  /// If the document exists and is expired,
+  /// it asynchronouly deletes it.
+  Future<bool> exists<T extends Object?>() async {
+    try {
+      final box = Hive.box(boxName);
+
+      // Check if it exists at all
+      final existsInTheBox = box.containsKey(documentName);
+      if (!existsInTheBox) return false;
+
+      // Check if it is supposed to expire
+      final data = box.get(documentName);
+      var doc = KoozaDocument<T>.fromMap(data);
+
+      // if there is no data in the document, then it does not exist.
+      if (doc.data == null) return false;
+
+      // if the data in the the document exists but there is no
+      // expiration then it exists
+      if (doc.ttl == null) return true;
+
+      // Check if the document is expired
       final storedDuration = DateTime.now().difference(doc.creationDate);
       if (storedDuration.inMilliseconds >= doc.ttl!.inMilliseconds) {
         await box.delete(documentName);
         return false;
       }
+
       return true;
     } catch (e) {
-      if (kDebugMode) print('KOOZA_DOCUMENT_EXITS: $e');
+      if (kDebugMode) print('KOOZA_SINGLE_DOCUMENT_EXITS: $e');
       return false;
     }
   }
@@ -42,9 +89,10 @@ class KoozaSingleDocumentReference {
   /// T can only be built-in Dart types.
   /// `ttl` (time to live) is the amount of time the data will be
   /// stored in Kooza. By default `ttl` is set to 2 hours.
-  Future<void> set<T extends Object?>(T data, {Duration ttl = const Duration(hours: 2)}) async {
+  Future<void> set<T extends Object?>(T data,
+      {Duration ttl = const Duration(hours: 2)}) async {
     try {
-      final box = await Hive.openLazyBox(dbName);
+      final box = Hive.box(boxName);
       var newDocument = KoozaDocument<T>.init(
         id: documentName,
         data: data,
@@ -62,7 +110,7 @@ class KoozaSingleDocumentReference {
   /// be `null` and its id will be an empty string
   Future<KoozaDocument<T>> get<T extends Object?>() async {
     try {
-      final box = await Hive.openLazyBox(dbName);
+      final box = Hive.box(boxName);
 
       final data = await box.get(documentName);
       var doc = KoozaDocument<T>.fromMap(data);
@@ -86,40 +134,32 @@ class KoozaSingleDocumentReference {
   /// and further events will be sent whenever the document is modified.
   Stream<KoozaDocument<T>> snapshots<T extends Object?>() async* {
     try {
-      final box = await Hive.openLazyBox(dbName);
+      final box = Hive.box(boxName);
 
-      if (box.containsKey(documentName)) {
-        final data = await box.get(documentName);
-        var doc = KoozaDocument<T>.fromMap(data);
-        if (doc.ttl != null) {
-          final storedDuration = DateTime.now().difference(doc.creationDate);
-          if (storedDuration.inMilliseconds >= doc.ttl!.inMilliseconds) {
-            await box.delete(documentName);
-          }
+      var initDoc = KoozaDocument<T>.fromMap(box.get(documentName));
+      if (initDoc.ttl != null) {
+        final storedDuration = DateTime.now().difference(initDoc.creationDate);
+        if (storedDuration.inMilliseconds >= initDoc.ttl!.inMilliseconds) {
+          await box.delete(documentName);
+          initDoc = KoozaDocument<T>.init();
         }
       }
-      final doc = KoozaDocument<T>.fromMap(await box.get(documentName));
+
       yield* box
           .watch(key: documentName)
           .asyncMap((event) async {
-            try {
-              if (box.containsKey(documentName)) {
-                final data = await box.get(documentName);
-                var doc = KoozaDocument<T>.fromMap(data);
-                if (doc.ttl != null) {
-                  final storedDuration = DateTime.now().difference(doc.creationDate);
-                  if (storedDuration.inMilliseconds >= doc.ttl!.inMilliseconds) {
-                    await box.delete(documentName);
-                  }
-                }
-              }
-              return KoozaDocument<T>.fromMap(event.value);
-            } catch (e) {
-              if (kDebugMode) print('KOOZA_SNAPSHOTS_SINGLE_DOCUMENT: $e');
+            final newDoc = KoozaDocument<T>.fromMap(event.value);
+            if (newDoc.ttl == null) return newDoc;
+
+            final storedDuration =
+                DateTime.now().difference(newDoc.creationDate);
+            if (storedDuration.inMilliseconds >= newDoc.ttl!.inMilliseconds) {
+              await box.delete(documentName);
               return KoozaDocument<T>.init();
             }
+            return newDoc;
           })
-          .startWith(doc)
+          .startWith(initDoc)
           .handleError((e) {
             if (kDebugMode) print('KOOZA_SNAPSHOTS_SINGLE_DOCUMENT: $e');
           });
@@ -131,10 +171,19 @@ class KoozaSingleDocumentReference {
   /// Deletes the current document from Kooza.
   Future<void> delete() async {
     try {
-      final box = await Hive.openLazyBox(dbName);
+      final box = Hive.box(boxName);
       await box.delete(documentName);
     } catch (e) {
       if (kDebugMode) print('KOOZA_DELTE_SINGLE_DOCUMENT: $e');
+    }
+  }
+
+  Future<void> close() async {
+    try {
+      final box = Hive.box(boxName);
+      await box.close();
+    } catch (e) {
+      if (kDebugMode) print("KOOZA_CLOSE_COLLECTION: $e");
     }
   }
 }

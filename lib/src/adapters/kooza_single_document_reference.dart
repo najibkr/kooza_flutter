@@ -90,7 +90,7 @@ class KoozaSingleDocumentReference {
   /// `ttl` (time to live) is the amount of time the data will be
   /// stored in Kooza. By default `ttl` is set to 2 hours.
   Future<void> set<T extends Object?>(T data,
-      {Duration ttl = const Duration(hours: 2)}) async {
+      {Duration? ttl = const Duration(hours: 2)}) async {
     try {
       final box = Hive.box(boxName);
       var newDocument = KoozaDocument<T>.init(

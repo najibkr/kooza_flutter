@@ -94,7 +94,7 @@ class KoozaDocumentReference<T extends Object?> {
   /// T can only be built-in Dart types.
   /// `ttl` (time to live) is the amount of time the data will be
   /// stored in Kooza. By default `ttl` is set to 2 hours.
-  Future<void> set(T data, {Duration ttl = const Duration(hours: 2)}) async {
+  Future<void> set(T data, {Duration? ttl = const Duration(hours: 2)}) async {
     try {
       final box = Hive.box(boxName);
 

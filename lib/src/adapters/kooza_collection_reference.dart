@@ -74,7 +74,7 @@ class KoozaCollectionReference<T extends Object?> {
   Future<String?> add(
     T data, {
     String? docId,
-    Duration ttl = const Duration(hours: 2),
+    Duration? ttl = const Duration(hours: 2),
   }) async {
     try {
       final newId = docId ?? _generateId();

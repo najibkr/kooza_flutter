@@ -6,7 +6,7 @@ class KoozaQuerySnapshot<T extends Object?> {
 
   bool isEmpty() => _docs.isEmpty;
 
-  List<KoozaDocument<T>> docs() => _docs.values.toList();
+  List<KoozaDocument<T>> get docs => _docs.values.toList();
 
   bool docExists(String documentId) => _docs.containsKey(documentId);
 

@@ -1,3 +1,6 @@
+## 2.0.4
+- Fixed bugs for getting single doc
+
 ## 2.0.3
 - Fixed the unending loop in collections
 

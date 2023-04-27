@@ -147,22 +147,11 @@ class KoozaSingleDocumentReference {
 
       yield* box
           .watch(key: documentName)
-          .asyncMap((event) async {
-            final newDoc = KoozaDocument<T>.fromMap(event.value);
-            if (newDoc.ttl == null) return newDoc;
-
-            final storedDuration =
-                DateTime.now().difference(newDoc.creationDate);
-            if (storedDuration.inMilliseconds >= newDoc.ttl!.inMilliseconds) {
-              await box.delete(documentName);
-              return KoozaDocument<T>.init();
-            }
-            return newDoc;
-          })
+          .map((event) => KoozaDocument<T>.fromMap(event.value))
           .startWith(initDoc)
           .handleError((e) {
-            if (kDebugMode) print('KOOZA_SNAPSHOTS_SINGLE_DOCUMENT: $e');
-          });
+        if (kDebugMode) print('KOOZA_SNAPSHOTS_SINGLE_DOCUMENT: $e');
+      });
     } catch (e) {
       if (kDebugMode) print('KOOZA_SNAPSHOTS_SINGLE_DOCUMENT: $e');
     }

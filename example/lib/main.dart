@@ -150,17 +150,19 @@ class ProductsBloc extends Cubit<ProductsState> {
   StreamSubscription? _darkmodeSub;
   void streamDarkMode() {
     _darkmodeSub?.cancel();
-    _darkmodeSub =
-        _kooza.singleDoc('appThemeData').snapshots<bool>().listen((event) {
-      emit(state.copyWith(isDarkMode: event.data));
+    _darkmodeSub = _kooza
+        .singleDoc('appThemeData1')
+        .snapshots<Map<String, dynamic>?>()
+        .listen((event) {
+      emit(state.copyWith(isDarkMode: event.data?['value']));
     });
   }
 
   void setDarkMode(bool value) async {
     try {
-      await _kooza
-          .singleDoc('appThemeData')
-          .set<bool>(value, ttl: const Duration(milliseconds: 3000));
+      await _kooza.singleDoc('appThemeData1').set<Map<String, dynamic>>(
+          {'value': value},
+          ttl: const Duration(milliseconds: 3000));
     } catch (e) {
       if (kDebugMode) print(e);
     }

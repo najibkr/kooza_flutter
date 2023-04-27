@@ -1,3 +1,6 @@
+## 2.0.3
+- Fixed the unending loop in collections
+
 ## 2.0.2
 - Bug Fixes
 

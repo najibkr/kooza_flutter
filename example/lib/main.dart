@@ -97,9 +97,13 @@ class ProductsBloc extends Cubit<ProductsState> {
         .map((doc) => Product.fromMap(doc.data, doc.id))
         .toList());
     _producstsSub?.cancel();
+
+    int counter = 0;
     _producstsSub = productsStream.listen((products) {
       emit(state.copyWith(products: products));
       // ignore: avoid_print
+      print('List of products: $products $counter');
+      counter++;
     }, onError: (e) => kDebugMode ? print('Error: $e') : null);
   }
 
@@ -117,8 +121,9 @@ class ProductsBloc extends Cubit<ProductsState> {
 
   void saveProduct() async {
     try {
-      final id =
-          await _kooza.collection('my_products').add(state.product.toMap());
+      final id = await _kooza
+          .collection('my_products')
+          .add(state.product.toMap(), ttl: const Duration(milliseconds: 3000));
       emit(state.copyWith(product: state.product.copyWith(id: id)));
     } catch (e) {
       if (kDebugMode) print('Error saving products: $e');

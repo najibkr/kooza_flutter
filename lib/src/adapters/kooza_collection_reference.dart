@@ -50,7 +50,7 @@ class KoozaCollectionReference<T extends Object?> {
 
   /// Checks if the collection exists.
   /// If the collection is empty, the returned value is `false`
-  bool exists() {
+  Future<bool> exists() async {
     try {
       final box = Hive.box(boxName);
 
@@ -59,7 +59,10 @@ class KoozaCollectionReference<T extends Object?> {
       if (!collectionExists) return false;
 
       final data = box.get(collectionName);
-      final newCollection = KoozaQuerySnapshot<T>.fromMap(data);
+      var newCollection = KoozaQuerySnapshot<T>.fromMap(data);
+      newCollection = newCollection.deleteExpiredDocs();
+      await box.put(collectionName, newCollection.toMap());
+
       if (newCollection.isEmpty()) return false;
 
       return true;
@@ -87,7 +90,7 @@ class KoozaCollectionReference<T extends Object?> {
         creationDate: DateTime.now(),
       );
 
-      if (exists()) {
+      if (await exists()) {
         final rawData = box.get(collectionName);
         var newCollection = KoozaQuerySnapshot<T>.fromMap(rawData);
         newCollection = newCollection.add(newId, newDocument);
@@ -118,14 +121,15 @@ class KoozaCollectionReference<T extends Object?> {
   }
 
   /// Streams the collection by returning a [KoozaQuerySnapshot]
-  Stream<KoozaQuerySnapshot<T>> snapshots() {
+  Stream<KoozaQuerySnapshot<T>> snapshots() async* {
     try {
       final box = Hive.box(boxName);
 
       final rawCollection = box.get(collectionName);
       var newCollection = KoozaQuerySnapshot<T>.fromMap(rawCollection);
-
-      return box
+      newCollection = newCollection.deleteExpiredDocs();
+      await box.put(collectionName, newCollection.toMap());
+      yield* box
           .watch(key: collectionName)
           .map((e) => KoozaQuerySnapshot<T>.fromMap(e.value))
           .startWith(newCollection)
@@ -134,15 +138,12 @@ class KoozaCollectionReference<T extends Object?> {
       });
     } catch (e) {
       if (kDebugMode) print('KOOZA_STREAM_COLLECTION: $e');
-      return Stream.value(KoozaQuerySnapshot<T>.init()).asBroadcastStream();
+      yield* Stream.value(KoozaQuerySnapshot<T>.init()).asBroadcastStream();
     }
   }
 
   Future<void> delete() async {
     try {
-      final collectionExists = exists();
-      if (!collectionExists) return;
-
       final box = Hive.box(boxName);
       await box.delete(collectionName);
     } catch (e) {

@@ -26,6 +26,21 @@ class KoozaQuerySnapshot<T extends Object?> {
     return KoozaQuerySnapshot<T>(docs: docs);
   }
 
+  KoozaQuerySnapshot<T> deleteExpiredDocs() {
+    var docs = Map<String, KoozaDocument<T>>.from(_docs);
+    docs.removeWhere((key, doc) {
+      if (doc.ttl == null) return false;
+      if (doc.data == null) return true;
+
+      final storedDuration = DateTime.now().difference(doc.creationDate);
+      if (storedDuration.inMilliseconds >= doc.ttl!.inMilliseconds) {
+        return true;
+      }
+      return false;
+    });
+    return KoozaQuerySnapshot<T>(docs: docs);
+  }
+
   const KoozaQuerySnapshot({
     required Map<String, KoozaDocument<T>> docs,
   }) : _docs = docs;

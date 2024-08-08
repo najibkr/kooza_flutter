@@ -12,8 +12,8 @@ dependencies:
   cupertino_icons: ^1.0.2
   kooza_flutter:
     path: ../
-  flutter_bloc: ^8.1.2
-  provider: ^6.0.5
+  flutter_bloc: ^8.1.6
+  provider: ^6.1.2
   hive: ^2.2.3
   hive_flutter: ^1.1.0
 

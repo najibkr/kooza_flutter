@@ -1,22 +1,22 @@
 name: kooza_flutter
 description: A blazingly fast, reactive, fully asynchronous and easy to use
   local database for flutter
-version: 2.0.4
+version: 2.0.5
 homepage: "https://github.com/najibkr/kooza_flutter"
 repository: "https://github.com/najibkr/kooza_flutter"
 issue_tracker: "https://github.com/najibkr/kooza_flutter/issues"
 
 environment:
-  sdk: ">=2.19.4 <3.0.0"
+  sdk: ">=3.5.0 <4.0.0"
   flutter: ">=1.17.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  rxdart: ^0.27.7
+  rxdart: ^0.28.0
   hive: ^2.2.3
   hive_flutter: ^1.1.0
-  shared_preferences: ^2.1.0
+  shared_preferences: ^2.3.1
 
 dev_dependencies:
   flutter_test:

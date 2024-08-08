@@ -336,8 +336,8 @@ class KoozaHomePage extends StatelessWidget {
         title: Text('Kooza Example App $data'),
         actions: [darkModeBtn, deleteAllBtn],
       ),
-      body: Column(
-        children: const [
+      body: const Column(
+        children: [
           FormCreateProduct(),
           Expanded(child: ListProducts()),
         ],

@@ -1,3 +1,6 @@
+## 2.0.7
+- Upgraded Dependencies
+
 ## 2.0.5
 - Fixed bugs for getting single doc
 

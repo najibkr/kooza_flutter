@@ -12,11 +12,7 @@ class Product {
   final double? price;
   const Product({this.id, this.name, this.price});
 
-  Product copyWith({
-    String? id,
-    String? name,
-    double? price,
-  }) {
+  Product copyWith({String? id, String? name, double? price}) {
     return Product(
       id: id ?? this.id,
       name: name ?? this.name,
@@ -34,11 +30,7 @@ class Product {
   }
 
   Map<String, dynamic> toMap() {
-    var map = <String, dynamic>{
-      'id': id,
-      'name': name,
-      'price': price,
-    };
+    var map = <String, dynamic>{'id': id, 'name': name, 'price': price};
     map.removeWhere((key, value) => value == null);
     return map;
   }
@@ -70,9 +62,7 @@ class ProductsState {
 
 class ProductsBloc extends Cubit<ProductsState> {
   final Kooza _kooza;
-  ProductsBloc(Kooza kooza)
-      : _kooza = kooza,
-        super(const ProductsState()) {
+  ProductsBloc(Kooza kooza) : _kooza = kooza, super(const ProductsState()) {
     streamDarkMode();
     streamProducts();
   }
@@ -93,9 +83,12 @@ class ProductsBloc extends Cubit<ProductsState> {
   StreamSubscription<List<Product>>? _producstsSub;
   void streamProducts() {
     final ref = _kooza.collection('my_products').snapshots();
-    final productsStream = ref.map((collection) => collection.docs
-        .map((doc) => Product.fromMap(doc.data, doc.id))
-        .toList());
+    final productsStream = ref.map(
+      (collection) =>
+          collection.docs
+              .map((doc) => Product.fromMap(doc.data, doc.id))
+              .toList(),
+    );
     _producstsSub?.cancel();
 
     int counter = 0;
@@ -104,6 +97,7 @@ class ProductsBloc extends Cubit<ProductsState> {
       // ignore: avoid_print
       print('List of products: $products $counter');
       counter++;
+      // ignore: avoid_print
     }, onError: (e) => kDebugMode ? print('Error: $e') : null);
   }
 
@@ -154,15 +148,15 @@ class ProductsBloc extends Cubit<ProductsState> {
         .singleDoc('appThemeData1')
         .snapshots<Map<String, dynamic>?>()
         .listen((event) {
-      emit(state.copyWith(isDarkMode: event.data?['value']));
-    });
+          emit(state.copyWith(isDarkMode: event.data?['value']));
+        });
   }
 
   void setDarkMode(bool value) async {
     try {
-      await _kooza.singleDoc('appThemeData1').set<Map<String, dynamic>>(
-          {'value': value},
-          ttl: const Duration(milliseconds: 3000));
+      await _kooza.singleDoc('appThemeData1').set<Map<String, dynamic>>({
+        'value': value,
+      }, ttl: const Duration(milliseconds: 3000));
     } catch (e) {
       if (kDebugMode) print(e);
     }
@@ -199,8 +193,9 @@ class _AppDataProviderState extends State<AppDataProvider> {
   Widget build(BuildContext context) {
     return FutureProvider<int?>(
       initialData: null,
-      create: (context) =>
-          Future.delayed(const Duration(milliseconds: 5000), () => 20),
+      create:
+          (context) =>
+              Future.delayed(const Duration(milliseconds: 5000), () => 20),
       child: BlocProvider(
         create: (c) => ProductsBloc(widget.kooza),
         child: const AppGeneralSetup(),
@@ -215,12 +210,13 @@ class AppGeneralSetup extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocSelector<ProductsBloc, ProductsState, bool>(
       selector: (state) => state.isDarkMode,
-      builder: (context, isDarkMode) => MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'Kooza Example App',
-        theme: isDarkMode ? ThemeData.dark() : ThemeData.light(),
-        home: const KoozaHomePage(),
-      ),
+      builder:
+          (context, isDarkMode) => MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: 'Kooza Example App',
+            theme: isDarkMode ? ThemeData.dark() : ThemeData.light(),
+            home: const KoozaHomePage(),
+          ),
     );
   }
 }
@@ -248,30 +244,33 @@ class _FormCreateProductState extends State<FormCreateProduct> {
   Widget build(BuildContext context) {
     final idField = BlocSelector<ProductsBloc, ProductsState, String?>(
       selector: (state) => state.product.id,
-      builder: (context, id) => TextFormField(
-        decoration: const InputDecoration(hintText: 'Product ID'),
-        initialValue: id,
-        onSaved: context.read<ProductsBloc>().setProductId,
-      ),
+      builder:
+          (context, id) => TextFormField(
+            decoration: const InputDecoration(hintText: 'Product ID'),
+            initialValue: id,
+            onSaved: context.read<ProductsBloc>().setProductId,
+          ),
     );
 
     final nameField = BlocSelector<ProductsBloc, ProductsState, String?>(
       selector: (state) => state.product.name,
-      builder: (context, name) => TextFormField(
-        decoration: const InputDecoration(hintText: 'Product Name'),
-        initialValue: name,
-        validator: (v) => (v?.trim().isEmpty ?? true) ? 'Add Name' : null,
-        onSaved: context.read<ProductsBloc>().setProductName,
-      ),
+      builder:
+          (context, name) => TextFormField(
+            decoration: const InputDecoration(hintText: 'Product Name'),
+            initialValue: name,
+            validator: (v) => (v?.trim().isEmpty ?? true) ? 'Add Name' : null,
+            onSaved: context.read<ProductsBloc>().setProductName,
+          ),
     );
 
     final priceField = BlocSelector<ProductsBloc, ProductsState, double?>(
       selector: (state) => state.product.price,
-      builder: (context, price) => TextFormField(
-        decoration: const InputDecoration(hintText: 'Product Price'),
-        initialValue: price?.toString(),
-        onSaved: context.read<ProductsBloc>().setProductPrice,
-      ),
+      builder:
+          (context, price) => TextFormField(
+            decoration: const InputDecoration(hintText: 'Product Price'),
+            initialValue: price?.toString(),
+            onSaved: context.read<ProductsBloc>().setProductPrice,
+          ),
     );
 
     final saveBtn = TextButton(
@@ -295,19 +294,23 @@ class ListProducts extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocSelector<ProductsBloc, ProductsState, List<Product>>(
       selector: (state) => state.products,
-      builder: (context, products) => ListView.builder(
-        itemCount: products.length,
-        itemBuilder: (context, index) => ListTile(
-          leading: IconButton(
-            onPressed: () =>
-                context.read<ProductsBloc>().deleteProduct(products[index].id),
-            icon: const Icon(Icons.delete),
+      builder:
+          (context, products) => ListView.builder(
+            itemCount: products.length,
+            itemBuilder:
+                (context, index) => ListTile(
+                  leading: IconButton(
+                    onPressed:
+                        () => context.read<ProductsBloc>().deleteProduct(
+                          products[index].id,
+                        ),
+                    icon: const Icon(Icons.delete),
+                  ),
+                  trailing: Text(products[index].price?.toString() ?? '0.0'),
+                  title: Text(products[index].name ?? ''),
+                  subtitle: Text(products[index].id ?? ''),
+                ),
           ),
-          trailing: Text(products[index].price?.toString() ?? '0.0'),
-          title: Text(products[index].name ?? ''),
-          subtitle: Text(products[index].id ?? ''),
-        ),
-      ),
     );
   }
 }
@@ -319,10 +322,11 @@ class KoozaHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final darkModeBtn = BlocSelector<ProductsBloc, ProductsState, bool>(
       selector: (state) => state.isDarkMode,
-      builder: (context, state) => Switch(
-        onChanged: (v) => context.read<ProductsBloc>().setDarkMode(v),
-        value: state,
-      ),
+      builder:
+          (context, state) => Switch(
+            onChanged: (v) => context.read<ProductsBloc>().setDarkMode(v),
+            value: state,
+          ),
     );
 
     final deleteAllBtn = IconButton(
@@ -337,10 +341,7 @@ class KoozaHomePage extends StatelessWidget {
         actions: [darkModeBtn, deleteAllBtn],
       ),
       body: const Column(
-        children: [
-          FormCreateProduct(),
-          Expanded(child: ListProducts()),
-        ],
+        children: [FormCreateProduct(), Expanded(child: ListProducts())],
       ),
     );
   }

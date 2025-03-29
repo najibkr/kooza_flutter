@@ -1,7 +1,7 @@
 ## About Kooza
 A blazingly fast, reactive, fully asynchronous, encrypted by default and easy to sue local database for flutter projects.
 ------------------------------------------------------------------------
-![Kooza](https://github.com/najibkr/kooza_flutter/blob/stable/kooza.jpg)  
+![Kooza](./kooza.jpg)  
 ## Getting Started
 **STEP ONE:** Please, add `kooza_flutter` to your package dependencies:
 ```code
